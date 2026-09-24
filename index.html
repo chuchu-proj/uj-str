@@ -1,0 +1,56 @@
+<!DOCTYPE html><html lang=zh-Hant><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1.0"><title>武將技能檢視表</title><link rel=stylesheet href=/app.b9c15f05.css><body>
+  
+  <header class=hero-banner>
+    <div class=hero-banner-inner>
+      <div class=eyebrow>武將資料庫 · 星級動態運算版</div>
+      <h1>武將技能檢視表</h1>
+    </div>
+  </header>
+
+  <main class=wrap>
+    
+    <section class="global-panel panel">
+      <div class=global-controls>
+        <div class=star-rating-item>
+          <div class=label-row>
+            <span class=name><span class="char swatch"></span>英雄星級</span>
+          </div>
+          <div class=star-rating-controls id=g_charStar_stars></div>
+        </div>
+        <div class=slider-item>
+          <div class=label-row>
+            <span class=name><span class="skill swatch"></span>技能等級</span>
+            <span class=value id=g_skillLevel_val>10</span>
+          </div>
+          <input type=range id=g_skillLevel min=1 max=10 step=1 value=10>
+        </div>
+        <div class=panel-title>
+          <label class=toggle-switch>
+            <input type=checkbox id=mainlandDataToggle>
+            <span class=toggle-track><span class=toggle-thumb></span></span>
+          </label>
+          <span class=toggle-label>陸服資料</span>
+        </div>
+      </div>
+    </section>
+
+    
+    <div class=controls>
+      <div class=search-box>
+        <input id=searchInput placeholder="搜尋武將名稱 / 技能名稱…" autocomplete=off>
+      </div>
+    </div>
+
+    <div class=hero-list id=heroList></div>
+    <div class=empty-state id=emptyState style=display:none>
+      找不到符合條件的武將
+    </div>
+    <div class=loading-state id=loadingState>資料載入中…</div>
+  </main>
+
+  <footer class=page-footer>資料來源：遊戲檔案拆包 (280)</footer>
+
+  
+  <script type=module src=/app.8f490533.js></script>
+
+
