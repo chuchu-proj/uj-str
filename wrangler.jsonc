@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "chuchu-proj",           // 對應你現有的 Worker 名稱
+  "compatibility_date": "2026-10-07",
+  "assets": {
+    "directory": "./"               // ← 改成你實際的靜態檔案目錄
+  }
+}
