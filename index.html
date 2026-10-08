@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=zh-Hant><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1.0"><title>武將技能檢視表</title><link rel=stylesheet href=app.dd30c338.css><body>
+<!DOCTYPE html><html lang=zh-Hant><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1.0"><title>武將技能檢視表</title><link rel=stylesheet href=app.cfb0bc3e.css><body>
   
   <header class=hero-banner>
     <div class=hero-banner-inner>
@@ -10,12 +10,33 @@
   <main class=wrap>
     
     <section class="global-panel panel">
+      <div class=panel-body>
       <div class=global-controls>
         <div class=star-rating-item>
           <div class=label-row>
             <span class=name><span class="char swatch"></span>英雄星級</span>
           </div>
           <div class=star-rating-controls id=g_charStar_stars></div>
+        </div>
+        <div class=star-rating-item>
+          <div class=label-row>
+            <span class=name><span class="gradient swatch"></span>稀有度</span>
+          </div>
+          <div class=filter-chips id=g_gradient_filter></div>
+        </div>
+        <div class=star-rating-item>
+          <div class=label-row>
+            <span class=name><span class="season swatch"></span>預計推出賽季</span>
+            
+            <span class=info-tip tabindex=0 aria-describedby=seasonTip>?
+              <span class=info-tip-bubble role=tooltip id=seasonTip>
+                預計推出的賽季是依照「賽季劇本編號」來決定，並不是按照台服實際推出的賽季順序。<br><br>
+                例如目前台服的 S2 使用的是陸服 S3 的劇本，而台服 S3 預計則會對應到陸服 S5 劇本。<br><br>
+                另外，部分武將目前的星級效果可能還不完整，後續也有可能在其他賽季中陸續補齊。
+              </span>
+            </span>
+          </div>
+          <div class=filter-chips id=g_season_filter></div>
         </div>
         <div class=slider-item>
           <div class=label-row>
@@ -32,6 +53,15 @@
           <span class=toggle-label>陸服資料</span>
         </div>
       </div>
+      </div>
+      
+      <button type=button class=panel-toggle id=panelToggle aria-label=切換選單顯示範圍 title="點擊全開 / 全關 · 上下拖曳逐列收合 / 展開">
+        <span class=panel-summary id=panelSummary></span>
+        <span class=panel-stage>
+          <span id=panelStageLabel></span>
+          <span class=stage-dots id=panelStageDots></span>
+        </span>
+      </button>
     </section>
 
     
@@ -48,9 +78,20 @@
     <div class=loading-state id=loadingState>資料載入中…</div>
   </main>
 
-  <footer class=page-footer>資料來源：遊戲檔案拆包 (280)</footer>
+  
+  <dialog class=star-dialog id=starDialog aria-labelledby=starDialogTitle>
+    <div class=star-dialog-head>
+      <h2 id=starDialogTitle></h2>
+      <span class=star-dialog-version id=starDialogVersion></span>
+      <button type=button class=star-dialog-close aria-label=關閉>✕</button>
+    </div>
+    <ol class=star-fx-list id=starDialogList></ol>
+    <p class=star-dialog-note>技能描述已包含星級獲得的增益；已達目前設定星級的效果以亮色標示。</p>
+  </dialog>
+
+  <footer class=page-footer>資料來源：遊戲檔案解包 (281)</footer>
 
   
-  <script type=module src=app.1d66663e.js></script>
+  <script type=module src=app.94b2886c.js></script>
 
 
