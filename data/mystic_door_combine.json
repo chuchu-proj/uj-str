@@ -1,0 +1,489 @@
+{
+  "source": "script/autocode/MysticDoor/Act1053_V02.lua (Combine)",
+  "note": "每名材料需 requireNum 份；武將份數 = star + overCnt + 1",
+  "recipes": [
+    {
+      "id": 1,
+      "type": 1,
+      "target": {
+        "id": 1007,
+        "name": "劉備"
+      },
+      "requireNum": 1,
+      "materials": [
+        {
+          "id": 1008,
+          "name": "張飛"
+        },
+        {
+          "id": 1009,
+          "name": "關羽"
+        },
+        {
+          "id": 1003,
+          "name": "諸葛亮"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": 1,
+      "target": {
+        "id": 1047,
+        "name": "孫權"
+      },
+      "requireNum": 1,
+      "materials": [
+        {
+          "id": 1046,
+          "name": "小喬"
+        },
+        {
+          "id": 1012,
+          "name": "周瑜"
+        },
+        {
+          "id": 1017,
+          "name": "孫堅"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": 1,
+      "target": {
+        "id": 1013,
+        "name": "曹操"
+      },
+      "requireNum": 1,
+      "materials": [
+        {
+          "id": 1004,
+          "name": "司馬懿"
+        },
+        {
+          "id": 1006,
+          "name": "郭嘉"
+        },
+        {
+          "id": 1025,
+          "name": "典韋"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": 1,
+      "target": {
+        "id": 1001,
+        "name": "趙雲"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 2007,
+          "name": "關銀屏"
+        },
+        {
+          "id": 1058,
+          "name": "魏延"
+        },
+        {
+          "id": 1036,
+          "name": "廖化"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": 1,
+      "target": {
+        "id": 1010,
+        "name": "馬超"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1062,
+          "name": "張星彩"
+        },
+        {
+          "id": 1037,
+          "name": "孟獲"
+        },
+        {
+          "id": 1033,
+          "name": "徐庶"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": 1,
+      "target": {
+        "id": 1009,
+        "name": "關羽"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 2007,
+          "name": "關銀屏"
+        },
+        {
+          "id": 1058,
+          "name": "魏延"
+        },
+        {
+          "id": 2021,
+          "name": "關興"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": 1,
+      "target": {
+        "id": 1008,
+        "name": "張飛"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1062,
+          "name": "張星彩"
+        },
+        {
+          "id": 1037,
+          "name": "孟獲"
+        },
+        {
+          "id": 2023,
+          "name": "張苞"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": 1,
+      "target": {
+        "id": 1003,
+        "name": "諸葛亮"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1024,
+          "name": "黃月英"
+        },
+        {
+          "id": 1011,
+          "name": "法正"
+        },
+        {
+          "id": 1039,
+          "name": "王平"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": 1,
+      "target": {
+        "id": 1032,
+        "name": "龐統"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1024,
+          "name": "黃月英"
+        },
+        {
+          "id": 1011,
+          "name": "法正"
+        },
+        {
+          "id": 2008,
+          "name": "糜竺"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": 1,
+      "target": {
+        "id": 1046,
+        "name": "小喬"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1051,
+          "name": "步練師"
+        },
+        {
+          "id": 1057,
+          "name": "吳國太"
+        },
+        {
+          "id": 1060,
+          "name": "魯肅"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": 1,
+      "target": {
+        "id": 1017,
+        "name": "孫堅"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1049,
+          "name": "黃蓋"
+        },
+        {
+          "id": 1050,
+          "name": "程普"
+        },
+        {
+          "id": 1057,
+          "name": "吳國太"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": 1,
+      "target": {
+        "id": 1012,
+        "name": "周瑜"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1016,
+          "name": "甘寧"
+        },
+        {
+          "id": 1060,
+          "name": "魯肅"
+        },
+        {
+          "id": 1051,
+          "name": "步練師"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": 1,
+      "target": {
+        "id": 1025,
+        "name": "典韋"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1040,
+          "name": "徐晃"
+        },
+        {
+          "id": 2018,
+          "name": "樂進"
+        },
+        {
+          "id": 2001,
+          "name": "曹丕"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": 1,
+      "target": {
+        "id": 1006,
+        "name": "郭嘉"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1005,
+          "name": "荀彧"
+        },
+        {
+          "id": 1067,
+          "name": "荀攸"
+        },
+        {
+          "id": 1068,
+          "name": "程昱"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": 1,
+      "target": {
+        "id": 1004,
+        "name": "司馬懿"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 2001,
+          "name": "曹丕"
+        },
+        {
+          "id": 1005,
+          "name": "荀彧"
+        },
+        {
+          "id": 1067,
+          "name": "荀攸"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": 1,
+      "target": {
+        "id": 1028,
+        "name": "左慈"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1064,
+          "name": "張梁"
+        },
+        {
+          "id": 1065,
+          "name": "張寶"
+        },
+        {
+          "id": 1069,
+          "name": "高順"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": 1,
+      "target": {
+        "id": 1030,
+        "name": "于吉"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1064,
+          "name": "張梁"
+        },
+        {
+          "id": 1065,
+          "name": "張寶"
+        },
+        {
+          "id": 1023,
+          "name": "公孫瓚"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": 1,
+      "target": {
+        "id": 1022,
+        "name": "張角"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 1064,
+          "name": "張梁"
+        },
+        {
+          "id": 1065,
+          "name": "張寶"
+        },
+        {
+          "id": 1066,
+          "name": "張燕"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": 1,
+      "target": {
+        "id": 1002,
+        "name": "呂布"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 2002,
+          "name": "呂玲綺"
+        },
+        {
+          "id": 1069,
+          "name": "高順"
+        },
+        {
+          "id": 1023,
+          "name": "公孫瓚"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": 1,
+      "target": {
+        "id": 1034,
+        "name": "貂蟬"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 2002,
+          "name": "呂玲綺"
+        },
+        {
+          "id": 1069,
+          "name": "高順"
+        },
+        {
+          "id": 1066,
+          "name": "張燕"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": 1,
+      "target": {
+        "id": 1070,
+        "name": "陳宮"
+      },
+      "requireNum": 3,
+      "materials": [
+        {
+          "id": 2002,
+          "name": "呂玲綺"
+        },
+        {
+          "id": 1023,
+          "name": "公孫瓚"
+        },
+        {
+          "id": 1066,
+          "name": "張燕"
+        }
+      ]
+    }
+  ]
+}
