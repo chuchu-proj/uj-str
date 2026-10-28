@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=zh-Hant><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1.0"><title>武將技能檢視表</title><link rel=icon href=favicon.a83e874d.ico sizes=any><link rel=icon type=image/png href=favicon.3fe96244.png><link rel=apple-touch-icon href=favicon.3fe96244.png><link rel=stylesheet href=app.af48a195.css><body>
+<!DOCTYPE html><html lang=zh-Hant><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1.0"><title>武將技能檢視表</title><link rel=icon href=favicon.a83e874d.ico sizes=any><link rel=icon type=image/png href=favicon.3fe96244.png><link rel=apple-touch-icon href=favicon.3fe96244.png><link rel=stylesheet href=app.c31155e7.css><body>
   
   <nav class=site-tabs role=tablist aria-label=頁面切換>
     <div class=site-tabs-inner>
@@ -23,12 +23,6 @@
       <div class=global-controls>
         <div class=star-rating-item>
           <div class=label-row>
-            <span class=name><span class="char swatch"></span>英雄星級</span>
-          </div>
-          <div class=star-rating-controls id=g_charStar_stars></div>
-        </div>
-        <div class=star-rating-item>
-          <div class=label-row>
             <span class=name><span class="gradient swatch"></span>稀有度</span>
           </div>
           <div class=filter-chips id=g_gradient_filter></div>
@@ -46,6 +40,13 @@
             </span>
           </div>
           <div class=filter-chips id=g_season_filter></div>
+        </div>
+        <div class=slider-item>
+          <div class=label-row>
+            <span class=name><span class="char swatch"></span>英雄星級</span>
+            <span class=value id=g_charStar_val>5★</span>
+          </div>
+          <input type=range id=g_charStar min=0 max=5 step=1 value=5>
         </div>
         <div class=slider-item>
           <div class=label-row>
@@ -91,10 +92,18 @@
   <main class="calc-page wrap" id=page-stats role=tabpanel aria-labelledby=tab-stats hidden>
     <section class="calc-step panel">
       <h2 class=calc-step-title><span class=calc-step-no>1</span>選擇武將</h2>
-      <div class=search-box>
-        <input id=calcSearch placeholder=搜尋武將名稱… autocomplete=off>
+      
+      <div class=calc-hero-group id=calcRecentGroup hidden>
+        <div class=calc-group-title>最近查看</div>
+        <div class="calc-hero-grid calc-hero-recent" id=calcRecent role=listbox aria-label=最近查看的武將></div>
       </div>
-      <div class=calc-hero-grid id=calcHeroGrid role=listbox aria-label=武將清單></div>
+      <div class=calc-hero-group>
+        <div class=calc-group-title>全部武將</div>
+        <div class=search-box>
+          <input id=calcSearch placeholder=搜尋武將名稱… autocomplete=off>
+        </div>
+        <div class=calc-hero-grid id=calcHeroGrid role=listbox aria-label=武將清單></div>
+      </div>
     </section>
 
     <section class="calc-step panel">
@@ -107,11 +116,12 @@
           </div>
           <input type=range id=calcLevel min=1 max=50 step=1 value=50>
         </div>
-        <div class=star-rating-item>
+        <div class=slider-item>
           <div class=label-row>
             <span class=name><span class="char swatch"></span>英雄星級</span>
+            <span class=value id=calcStarVal>5★</span>
           </div>
-          <div class=star-rating-controls id=calcStars></div>
+          <input type=range id=calcStar min=0 max=5 step=1 value=5>
         </div>
         <div class=panel-title>
           <label class=toggle-switch>
@@ -180,6 +190,6 @@
   <footer class=page-footer>資料來源：遊戲檔案解包 (281)</footer>
 
   
-  <script type=module src=app.957e100c.js></script>
+  <script type=module src=app.67ac54dc.js></script>
 
 
