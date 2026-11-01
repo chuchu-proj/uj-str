@@ -43,6 +43,22 @@ button, input { font: inherit; color: inherit; }
 .hoard-chip { display: flex; align-items: center; gap: 4px; border-radius: 999px; background: #0a0b0b; border-color: #2c2f30; }
 .hoard-chip b { color: var(--gold); }
 .hoard-chip span { color: var(--green); font-variant-numeric: tabular-nums; font-size: 13px; }
+.top-fold { display: none; }
+/* 手機版頂欄：資源每行一欄、辨識按鈕並排、屯田令與計算方式各一行、其餘三鈕一行；可收起 */
+@media (max-width: 640px) {
+  .topbar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 8px 12px; }
+  .topbar > * { grid-column: span 6; }
+  .topbar .title { grid-column: span 4; margin: 0; align-self: center; }
+  .topbar .top-fold { display: block; grid-column: span 2; padding: 5px 8px; }
+  .topbar > .btn[data-ocr-mode] { grid-column: span 3; }
+  .topbar > #timeMode, .topbar > #shareBtn, .topbar > #resetBtn { grid-column: span 2; padding: 6px 4px; font-size: 14px; white-space: nowrap; }
+  .topbar.folded > :not(.title):not(.top-fold) { display: none; }
+  .res { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto minmax(0, 1.1fr); padding: 3px 12px 3px 6px; }
+  .res input, .res .rate input { width: 100%; min-width: 0; }
+  .res .rate { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+  .hoard-chip { justify-content: center; }
+  .toggle { justify-content: center; }
+}
 .hoard { width: min(560px, calc(100vw - 32px)); }
 .share { width: min(620px, calc(100vw - 32px)); }
 .share textarea { width: 100%; min-height: 84px; margin-top: 10px; background: #0d0f10; border: 1px solid var(--line); border-radius: 4px;
@@ -108,7 +124,7 @@ button, input { font: inherit; color: inherit; }
 @media (max-width: 640px) {
   .tier { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
   .tier.top .card { grid-column: 2; }
-  .label { font-size: 14px; padding: 2px 8px; }
+  .label { font-size: 14px; padding: 2px 8px; gap: 0 4px; flex-wrap: wrap; justify-content: center; border-radius: 12px; }
   .tiers { padding-left: 46px; }
   .tier-mark { left: -48px; }
   .title { font-size: 22px; }
@@ -226,8 +242,9 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
 </style>
 </head>
 <body>
-<header class="topbar">
+<header class="topbar" id="topbar">
   <div class="title">建築總覽</div>
+  <button class="btn top-fold" id="topFold" aria-expanded="true">收起 ▲</button>
   <div class="res" title="木材：目前庫存與每小時回復量（單位：萬，可留空）"><span class="ico" style="background:#c8935a">木</span><input id="stWood" placeholder="庫存"><span class="unit">萬</span><span class="rate">+<input id="rtWood" placeholder="0"><span class="unit">萬/時</span></span></div>
   <div class="res" title="石料：目前庫存與每小時回復量（單位：萬，可留空）"><span class="ico" style="background:#a9b1b6">石</span><input id="stMetal" placeholder="庫存"><span class="unit">萬</span><span class="rate">+<input id="rtMetal" placeholder="0"><span class="unit">萬/時</span></span></div>
   <div class="res" title="銅錢：目前庫存與每小時回復量（單位：萬，可留空）"><span class="ico" style="background:#e3be5d">錢</span><input id="stMoney" placeholder="庫存"><span class="unit">萬</span><span class="rate">+<input id="rtMoney" placeholder="0"><span class="unit">萬/時</span></span></div>
@@ -601,6 +618,14 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
   let sim = new Sim(state.levels);
   let lastPlan = null;
 
+  // 手機版頂欄收起／展開（記在本機設定）
+  const syncFold = () => {
+    $("topbar").classList.toggle("folded", !!state.topFold);
+    $("topFold").textContent = state.topFold ? "展開 ▼" : "收起 ▲";
+    $("topFold").setAttribute("aria-expanded", String(!state.topFold));
+  };
+  $("topFold").addEventListener("click", () => { state.topFold = !state.topFold; save(); syncFold(); });
+  syncFold();
   function save() {
     state.levels = { ...sim.levels };
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
