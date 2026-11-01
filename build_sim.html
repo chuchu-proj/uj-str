@@ -1,0 +1,1940 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>建築總覽模擬器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #15181a; --bg-2: #1d2124; --panel: rgba(18, 21, 23, .88); --row: #22272a; --row-2: #1a1e20;
+  --line: #3a3f40; --text: #ece6d6; --muted: #9b958a; --gold: #e6c27a; --gold-deep: #b48a3c;
+  --red: #ef4b3f; --green: #5fd46e; --pill: #121212; --cream: #efe7d1; --cream-text: #2a241b;
+  --serif: "Noto Serif TC", "DFKai-SB", "BiauKai", serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: radial-gradient(120% 80% at 30% 0%, #2a3236 0%, var(--bg) 60%) fixed, var(--bg);
+  color: var(--text); font: 15px/1.45 system-ui, "Microsoft JhengHei", "PingFang TC", sans-serif; min-height: 100vh; }
+button, input { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* 頂欄 */
+.topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 16px; background: linear-gradient(#0e1011, rgba(14, 16, 17, .92)); border-bottom: 1px solid var(--line); }
+.title { font: 900 26px/1 var(--serif); color: var(--gold); letter-spacing: 2px; margin-right: auto;
+  text-shadow: 0 2px 0 #000; }
+.res { display: flex; align-items: center; gap: 6px; background: #0a0b0b; border: 1px solid #2c2f30;
+  border-radius: 999px; padding: 3px 12px 3px 6px; }
+.res .ico { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px;
+  font-weight: 700; color: #1b1b1b; }
+.res input { width: 64px; background: transparent; border: 0; outline: 0; font-size: 17px; text-align: right; }
+.res .unit { color: var(--muted); font-size: 13px; }
+.res .rate { display: flex; align-items: center; gap: 2px; border-left: 1px solid #2c2f30; padding-left: 6px; color: var(--green); }
+.res .rate input { width: 62px; font-size: 14px; color: var(--green); }
+.res input::placeholder { color: #5d5a54; }
+.btn { background: #2b3033; border: 1px solid #4a4f50; border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--gold); }
+.toggle { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; background: #0a0b0b;
+  border: 1px solid #2c2f30; border-radius: 999px; padding: 5px 12px; }
+.toggle select { background: transparent; border: 0; color: var(--gold); font: inherit; cursor: pointer; }
+.toggle select option { background: #181b1d; color: var(--text); }
+.hoard-chip { display: flex; align-items: center; gap: 4px; border-radius: 999px; background: #0a0b0b; border-color: #2c2f30; }
+.hoard-chip b { color: var(--gold); }
+.hoard-chip span { color: var(--green); font-variant-numeric: tabular-nums; font-size: 13px; }
+.hoard { width: min(560px, calc(100vw - 32px)); }
+.share { width: min(620px, calc(100vw - 32px)); }
+.share textarea { width: 100%; min-height: 84px; margin-top: 10px; background: #0d0f10; border: 1px solid var(--line); border-radius: 4px;
+  padding: 8px; font: 12px/1.4 ui-monospace, Consolas, monospace; color: var(--text); word-break: break-all; resize: vertical; }
+.share ul { margin: 6px 0; padding-left: 20px; }
+.hoard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 14px; }
+.hoard-grid label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hoard-grid label.chk { grid-column: 1 / -1; justify-content: flex-start; }
+.hoard-grid input[type=number], .hoard-grid input:not([type]) { width: 90px; background: #0d0f10; border: 1px solid #4a4f50;
+  border-radius: 4px; padding: 4px 6px; text-align: center; }
+.hoard-grid input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px; }
+.hoard-sub { grid-column: 1 / -1; color: var(--gold); font: 900 15px/1 var(--serif); margin-top: 6px; }
+.hoard-preview { margin-top: 12px; padding: 8px 10px; background: #111314; border: 1px solid #2f3435; border-radius: 6px; font-size: 13px; line-height: 1.7; }
+@media (max-width: 520px) { .hoard-grid { grid-template-columns: 1fr; } }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.gold { background: linear-gradient(#e9c77f, #b68b3d); color: #241a08; border-color: #f2d699; font-weight: 700; }
+.btn.cream { background: linear-gradient(#f6efdc, #e2d6b8); color: var(--cream-text); border: 2px solid #c9b88f;
+  font: 600 22px/1 var(--serif); letter-spacing: 4px; padding: 14px; width: 100%; border-radius: 4px; }
+
+/* 主體 */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 20px; max-width: 1400px;
+  margin: 0 auto; padding: 18px 16px 60px; }
+@media (max-width: 1020px) { .layout { grid-template-columns: 1fr; } }
+.summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; }
+.chip .k { font-size: 12px; color: var(--muted); }
+.chip .v { font-size: 18px; font-weight: 600; }
+
+/* 建築格子 */
+.tiers { position: relative; padding-left: 58px; }
+.tiers::before { content: ""; position: absolute; left: 22px; top: 30px; bottom: 30px; width: 4px;
+  background: linear-gradient(var(--gold-deep), var(--gold), var(--gold-deep)); border-radius: 2px; }
+.tier { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px;
+  margin-bottom: 22px; }
+.tier-mark { position: absolute; left: -58px; top: 50%; transform: translateY(-80%); width: 48px; height: 48px;
+  display: grid; place-items: center; }
+.tier-mark span { width: 34px; height: 34px; transform: rotate(45deg); background: #121314; border: 2px solid var(--gold);
+  display: grid; place-items: center; box-shadow: 0 0 0 3px #121314; }
+.tier-mark b { transform: rotate(-45deg); font: 900 18px/1 var(--serif); color: var(--gold); }
+.card { display: flex; flex-direction: column; align-items: center; gap: 0; cursor: pointer; background: none; border: 0;
+  padding: 0; min-width: 0; }
+.plate { width: 100%; max-width: 190px; aspect-ratio: 1.6; position: relative; display: grid; place-items: center; }
+.plate::before { content: ""; position: absolute; inset: 38% 4% 4%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, #8fa35a, #5d7038 60%, #3c4826); box-shadow: 0 6px 14px rgba(0, 0, 0, .6); }
+.plate .house { position: relative; width: 58%; aspect-ratio: 1.15; margin-bottom: 14%;
+  background: linear-gradient(#304a52, #1d3036); clip-path: polygon(50% 0, 100% 34%, 92% 34%, 92% 100%, 8% 100%, 8% 34%, 0 34%);
+  display: grid; place-items: center; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .5)); }
+.plate .house::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: 0; height: 58%;
+  background: linear-gradient(#7b3f2b, #4e2619); }
+.plate .house b { position: relative; z-index: 1; margin-top: 30%; font: 900 clamp(16px, 2.2vw, 26px)/1 var(--serif);
+  color: #f4e3b8; text-shadow: 0 2px 2px #000; }
+.card.sel .plate::before { box-shadow: 0 0 0 3px var(--gold), 0 0 18px rgba(230, 194, 122, .6); }
+.card.lock .plate { filter: grayscale(.85) brightness(.6); }
+.label { margin-top: -10px; position: relative; display: flex; align-items: center; gap: 6px; max-width: 100%;
+  background: var(--pill); border: 1px solid #3b3b3b; border-radius: 999px; padding: 3px 14px;
+  font: 600 18px/1.2 var(--serif); white-space: nowrap; box-shadow: 0 2px 4px rgba(0, 0, 0, .7); }
+.label .lv { font-family: system-ui, sans-serif; font-weight: 600; }
+.label .lv i { font-style: normal; }
+.label .lv i.red { color: var(--red); }
+.label .up { color: var(--green); font-size: 16px; font-weight: 900; }
+.label .max { color: var(--gold); font: 700 12px/1 system-ui; }
+.tier.top .card { grid-column: 2 / span 2; }
+@media (max-width: 640px) {
+  .tier { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+  .tier.top .card { grid-column: 2; }
+  .label { font-size: 14px; padding: 2px 8px; }
+  .tiers { padding-left: 46px; }
+  .tier-mark { left: -48px; }
+  .title { font-size: 22px; }
+}
+
+/* 右側面板 */
+.panel { position: sticky; top: 76px; align-self: start; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 18px 16px; }
+@media (max-width: 1020px) { .panel { position: static; } }
+.panel h2 { margin: 0 0 6px; font: 900 40px/1.1 var(--serif); color: var(--gold); letter-spacing: 6px;
+  text-shadow: 0 3px 0 #000; }
+.divider { height: 2px; background: linear-gradient(90deg, transparent, var(--gold-deep), transparent); margin: 6px 0 12px; }
+.prow { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; background: var(--row);
+  margin-bottom: 4px; padding: 6px 10px 6px 4px; border-radius: 2px; }
+.prow:nth-child(even) { background: var(--row-2); }
+.prow .ic { width: 34px; height: 34px; display: grid; place-items: center; background: #0f1112; border: 1px solid #4a4f50;
+  border-radius: 4px; font: 900 15px/1 var(--serif); color: var(--gold); }
+.prow .k { font: 600 18px/1.2 var(--serif); }
+.prow .v { font-size: 17px; text-align: right; }
+.arrow { color: var(--gold); font-weight: 900; margin: 0 4px; }
+.ok { color: var(--green); }
+.bad { color: var(--red); }
+.sect { font: 900 22px/1 var(--serif); color: var(--gold); margin: 20px 0 10px; letter-spacing: 2px; }
+.warn { text-align: center; color: var(--red); font: 600 18px/1.4 var(--serif); margin: 18px 0 10px; min-height: 25px; }
+.plan-ctl { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.plan-ctl input { width: 70px; background: #0d0f10; border: 1px solid #4a4f50; border-radius: 4px; padding: 6px; text-align: center; }
+
+/* 路徑 */
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; margin-top: 8px; }
+.box h3 { margin: 0 0 8px; font: 900 20px/1 var(--serif); color: var(--gold); }
+.scroll { max-height: 440px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid #2c3132; text-align: left; white-space: nowrap; }
+th { position: sticky; top: 0; background: #181b1d; color: var(--muted); font-weight: 500; font-size: 12px; }
+td.r, th.r { text-align: right; }
+.reason-目標 { color: var(--gold); font-weight: 700; }
+.reason-補繁榮度 { color: var(--muted); }
+.eval { margin-top: 12px; }
+.eval h4 { margin: 0 0 6px; font: 900 16px/1 var(--serif); color: var(--gold); }
+.eval td.good { color: var(--green); font-weight: 700; }
+.eval td.bad { color: var(--red); }
+.eval td.mixed { color: var(--gold); }
+.eval small { color: var(--muted); }
+.note-sm { color: var(--muted); font-size: 12px; margin-top: 4px; }
+td.hoard-cell { color: var(--gold); font-weight: 700; }
+.eval .btn { padding: 2px 10px; font-size: 13px; }
+details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 8px; }
+.prio { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; }
+.prio-title { font: 900 16px/1 var(--serif); color: var(--gold); margin-right: 4px; }
+.prio-empty { color: var(--muted); font-size: 13px; }
+.prio-item { display: inline-flex; align-items: center; gap: 4px; background: #0f1112; border: 1px solid var(--gold-deep);
+  border-radius: 999px; padding: 2px 4px 2px 10px; }
+.prio-item input { width: 44px; background: transparent; border: 0; border-left: 1px solid #3a3f40; text-align: center; color: var(--gold); }
+.prio-name, .prio-del { background: none; border: 0; cursor: pointer; padding: 0 2px; }
+.prio-name { font: 600 15px/1 var(--serif); }
+.prio-del { color: var(--muted); font-size: 16px; }
+.prio-del:hover { color: var(--red); }
+.prio-item.zero { border-color: #3a3f40; opacity: .6; }
+.prio-item:not(:has(.prio-del)) { padding-right: 8px; }
+.prio-badge { background: linear-gradient(#f0cf83, #b8893a); color: #2a1d08; font: 900 12px/1 var(--serif); padding: 3px 4px;
+  border-radius: 3px; margin-right: 2px; }
+
+/* 截圖辨識 */
+dialog { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); background: #181b1d; color: var(--text);
+  border: 1px solid var(--gold-deep); border-radius: 8px; padding: 18px; }
+dialog::backdrop { background: rgba(0, 0, 0, .7); }
+dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); }
+.guide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 14px; align-items: start;
+  margin-bottom: 12px; font-size: 14px; }
+.guide ol { margin: 0; padding-left: 20px; line-height: 1.7; }
+.guide b { color: var(--gold); }
+.guide .note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.guide figure { margin: 0; }
+.guide img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 4px; }
+.guide figcaption { color: var(--muted); font-size: 12px; margin-top: 4px; text-align: center; }
+@media (max-width: 720px) { .guide { grid-template-columns: 1fr; } }
+.drop { border: 2px dashed #4a4f50; border-radius: 8px; padding: 18px; text-align: center; color: var(--muted); cursor: pointer; }
+.drop.hover { border-color: var(--gold); color: var(--text); }
+#ocrCanvas { width: 100%; height: auto; margin-top: 10px; border-radius: 4px; display: none; }
+.ocr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 10px; }
+.ocr-item { background: #111314; border: 1px solid #2f3435; border-radius: 6px; padding: 6px 8px; display: grid;
+  grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+.ocr-item.warnc { border-color: var(--red); }
+.ocr-item canvas { grid-column: 1 / -1; width: 100%; height: 26px; object-fit: contain; background: #fff; border-radius: 3px; }
+.ocr-item [data-res-stock], .ocr-item [data-res-rate] { width: 64px; }
+.ocr-item input { width: 54px; background: #0d0f10; border: 1px solid #4a4f50; border-radius: 4px; padding: 2px 4px; text-align: center; }
+.ocr-item .n { font-weight: 600; }
+.ocr-item .s { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.ocr-tiers { display: block; position: relative; padding-left: 46px; }
+.ocr-tiers::before { content: ""; position: absolute; left: 20px; top: 12px; bottom: 12px; width: 3px;
+  background: linear-gradient(var(--gold-deep), var(--gold), var(--gold-deep)); border-radius: 2px; }
+.ocr-row { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.ocr-row .tier-mark { left: -48px; transform: translateY(-50%); }
+.ocr-row.top .ocr-item { grid-column: 2 / span 2; }
+.ocr-tiers .ocr-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; min-width: 0; }
+.ocr-tiers .ocr-item canvas { width: 100%; height: 26px; }
+.ocr-tiers .pill { display: flex; align-items: center; gap: 6px; max-width: 100%; background: var(--pill); border: 1px solid #3b3b3b;
+  border-radius: 999px; padding: 2px 10px; font: 600 15px/1.3 var(--serif); white-space: nowrap; }
+.ocr-tiers .pill .lv { font: 600 14px/1 system-ui, sans-serif; }
+.ocr-tiers .pill input { width: 44px; }
+.ocr-tiers .s { text-align: center; }
+.ocr-tiers .main .pill { border-color: var(--gold-deep); }
+.ocr-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.ocr-foot input { width: 64px; background: #0d0f10; border: 1px solid var(--gold-deep); border-radius: 4px; padding: 5px; text-align: center; font-size: 17px; }
+#ocrStatus { color: var(--muted); font-size: 13px; }
+.engine { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #111314; border: 1px solid #2f3435;
+  border-left: 3px solid var(--gold-deep); border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
+.engine[hidden] { display: none; }
+.engine .msg { flex: 1 1 260px; }
+.engine.ready { border-left-color: var(--green); }
+.engine.error { border-left-color: var(--red); }
+.engine .prog { flex: 0 0 140px; height: 6px; background: #2f3435; border-radius: 3px; overflow: hidden; }
+.engine .prog i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .2s; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="title">建築總覽</div>
+  <div class="res" title="木材：目前庫存與每小時回復量（單位：萬，可留空）"><span class="ico" style="background:#c8935a">木</span><input id="stWood" placeholder="庫存"><span class="unit">萬</span><span class="rate">+<input id="rtWood" placeholder="0"><span class="unit">萬/時</span></span></div>
+  <div class="res" title="石料：目前庫存與每小時回復量（單位：萬，可留空）"><span class="ico" style="background:#a9b1b6">石</span><input id="stMetal" placeholder="庫存"><span class="unit">萬</span><span class="rate">+<input id="rtMetal" placeholder="0"><span class="unit">萬/時</span></span></div>
+  <div class="res" title="銅錢：目前庫存與每小時回復量（單位：萬，可留空）"><span class="ico" style="background:#e3be5d">錢</span><input id="stMoney" placeholder="庫存"><span class="unit">萬</span><span class="rate">+<input id="rtMoney" placeholder="0"><span class="unit">萬/時</span></span></div>
+  <button class="btn gold" data-ocr-mode="build">辨識建築</button>
+  <button class="btn gold" data-ocr-mode="res">辨識資源</button>
+  <button class="btn hoard-chip" id="hoardOpen" title="屯田設定：屯田令數量、資源點等級、聯盟加成、每日購買">屯田令 <b id="hoardCnt">–</b>/10 <span id="hoardTimer"></span></button>
+  <label class="toggle" title="分開計算：每種資源各自足夠才升級。總資源量（最快）：合計足夠就升級，缺的立刻用屯田令補。最少屯田令：與「最快」同時完成，但每一步等到資源各自足夠才升，只在期限到時才用屯田令補。">計算
+    <select id="calcMode"><option value="split">分開計算</option><option value="pooled">總資源量（最快）</option><option value="lean">最少屯田令</option></select></label>
+  <button class="btn" id="timeMode" title="切換時間顯示：剩餘時間（約 3 小時後）／實際時間點（11/03 14:25）">時間：剩餘時間</button>
+  <button class="btn" id="shareBtn" title="把目前設定（含已計算的升級路徑）產生成連結分享，不含截圖">分享設定</button>
+  <button class="btn" id="resetBtn">重設</button>
+</header>
+
+<div class="layout">
+  <main>
+    <div class="summary" id="summary"></div>
+    <div class="prio" id="prio"></div>
+    <div class="tiers" id="tiers"></div>
+
+    <section class="box" id="planBox" hidden>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <h3 id="planTitle" style="margin:0">升級路徑</h3>
+      </div>
+      <div id="planInfo"></div>
+      <div class="scroll" id="planSteps" style="margin-top:8px"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn gold" id="applyPlan">套用此路徑</button>
+        <button class="btn" id="closePlan">關閉</button>
+      </div>
+    </section>
+  </main>
+
+  <aside class="panel" id="panel"></aside>
+</div>
+
+<dialog id="shareDlg" class="share">
+  <h3 id="shareTitle">分享設定</h3>
+  <div id="shareBody" style="font-size:14px;line-height:1.6"></div>
+  <textarea id="shareUrl" readonly spellcheck="false"></textarea>
+  <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:10px">
+    <span id="shareMsg" style="color:var(--muted);font-size:13px;margin-right:auto"></span>
+    <button class="btn" id="shareClose">關閉</button>
+    <button class="btn gold" id="shareAction">複製連結</button>
+  </div>
+</dialog>
+
+<dialog id="hoardDlg" class="hoard">
+  <h3>屯田設定</h3>
+  <div class="hoard-grid">
+    <label>目前屯田令 <span><input type="number" id="hdCount" min="0" max="10"> / 10</span></label>
+    <label>下一個恢復剩餘 <input id="hdNext" placeholder="時:分，例如 2:15"></label>
+    <label class="chk"><input type="checkbox" id="hdBuy"> 每日購買屯田令（UTC+8 0 時重置，每日可買 3 個）</label>
+    <label class="chk"><input type="checkbox" id="hdBought"> 今天已經買過</label>
+    <label>資源點等級 <input type="number" id="hdLv" min="0" max="15" title="屯田的資源點等級；資源點類型可自由轉換，所以三種資源收益相同"></label>
+    <label>聯盟科技屯田加成 <span><input type="number" id="hdUnion" min="0" step="0.1"> %</span></label>
+  </div>
+  <div id="hdPreview" class="hoard-preview"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+    <button class="btn" id="hdClose">取消</button>
+    <button class="btn gold" id="hdSave">儲存</button>
+  </div>
+</dialog>
+
+<dialog id="ocrDlg">
+  <h3 id="ocrTitle">辨識建築</h3>
+  <div class="guide" id="ocrGuide"></div>
+  <div class="engine" id="engineBar" hidden></div>
+  <label class="drop" id="drop">點此選擇圖片，或把截圖拖曳 / 貼上到這裡<input type="file" id="ocrFile" accept="image/*" hidden></label>
+  <canvas id="ocrCanvas"></canvas>
+  <div class="ocr-grid" id="ocrGrid"></div>
+  <div class="ocr-foot">
+    <label id="ocrMainWrap">君主殿等級 <input type="number" id="ocrMain" min="1" max="18"></label>
+    <span id="ocrHint" style="font-size:13px"></span>
+    <span id="ocrStatus"></span>
+    <span style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn" id="ocrClose">取消</button>
+      <button class="btn gold" id="ocrApply" disabled>套用</button>
+    </span>
+  </div>
+</dialog>
+
+<script id="build-data" type="application/json">{"mainBid":1,"buildings":{"42":{"initLev":1,"levels":[{"Wood":0,"Power":0,"Stype":2001,"Money":0,"UpgradeLimit":[],"Bonus":0,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":0},{"Wood":1600,"Power":1600,"Stype":2001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":1}],"Bonus":0.005,"CloutLimit":0,"Item":[],"Time":1,"Metal":0,"Level":1,"Stage":1,"Clout":8000},{"Wood":6400,"Power":11000,"Stype":2001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.01,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":16000},{"Wood":11200,"Power":22000,"Stype":2001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.015,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":24000},{"Wood":16000,"Power":33000,"Stype":2001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.02,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":32000},{"Wood":20800,"Power":44000,"Stype":2001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":5}],"Bonus":0.025,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":40000},{"Wood":31200,"Power":55000,"Stype":2001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":6}],"Bonus":0.03,"CloutLimit":0,"Item":[],"Time":0,"Metal":31200,"Level":1,"Stage":1,"Clout":48000},{"Wood":52000,"Power":66000,"Stype":2001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":7}],"Bonus":0.035,"CloutLimit":0,"Item":[],"Time":0,"Metal":52000,"Level":1,"Stage":1,"Clout":56000},{"Wood":104000,"Power":77000,"Stype":2001,"Money":104000,"UpgradeLimit":[{"bid":1,"lev":8}],"Bonus":0.04,"CloutLimit":0,"Item":[],"Time":0,"Metal":104000,"Level":1,"Stage":1,"Clout":64000},{"Wood":210000,"Power":88000,"Stype":2002,"Money":210000,"UpgradeLimit":[{"bid":1,"lev":9}],"Bonus":0.045,"CloutLimit":0,"Item":[],"Time":0,"Metal":210000,"Level":2,"Stage":2,"Clout":80000},{"Wood":320000,"Power":99000,"Stype":2002,"Money":320000,"UpgradeLimit":[{"bid":1,"lev":10}],"Bonus":0.05,"CloutLimit":0,"Item":[],"Time":0,"Metal":320000,"Level":2,"Stage":2,"Clout":96000},{"Wood":430000,"Power":110000,"Stype":2002,"Money":430000,"UpgradeLimit":[{"bid":1,"lev":11}],"Bonus":0.055,"CloutLimit":0,"Item":[],"Time":0,"Metal":430000,"Level":2,"Stage":2,"Clout":112000},{"Wood":560000,"Power":121000,"Stype":2103,"Money":560000,"UpgradeLimit":[{"bid":1,"lev":12}],"Bonus":0.06,"CloutLimit":0,"Item":[],"Time":0,"Metal":560000,"Level":3,"Stage":3,"Clout":136000},{"Wood":680000,"Power":132000,"Stype":2103,"Money":680000,"UpgradeLimit":[{"bid":1,"lev":13}],"Bonus":0.065,"CloutLimit":0,"Item":[],"Time":0,"Metal":680000,"Level":3,"Stage":3,"Clout":160000},{"Wood":800000,"Power":143000,"Stype":2103,"Money":800000,"UpgradeLimit":[{"bid":1,"lev":14}],"Bonus":0.07,"CloutLimit":0,"Item":[],"Time":0,"Metal":800000,"Level":3,"Stage":3,"Clout":184000},{"Wood":1100000,"Power":154000,"Stype":2104,"Money":1100000,"UpgradeLimit":[{"bid":1,"lev":15}],"Bonus":0.075,"CloutLimit":0,"Item":[],"Time":0,"Metal":1100000,"Level":4,"Stage":4,"Clout":216000},{"Wood":1400000,"Power":165000,"Stype":2104,"Money":1400000,"UpgradeLimit":[{"bid":1,"lev":16}],"Bonus":0.08,"CloutLimit":0,"Item":[],"Time":0,"Metal":1400000,"Level":4,"Stage":4,"Clout":248000},{"Wood":1700000,"Power":176000,"Stype":2104,"Money":1700000,"UpgradeLimit":[{"bid":1,"lev":17}],"Bonus":0.085,"CloutLimit":0,"Item":[],"Time":0,"Metal":1700000,"Level":4,"Stage":4,"Clout":280000},{"Wood":3400000,"Power":200000,"Stype":2105,"Money":3400000,"UpgradeLimit":[{"bid":1,"lev":18}],"Bonus":0.09,"CloutLimit":0,"Item":[],"Time":0,"Metal":3400000,"Level":5,"Stage":5,"Clout":320000}],"name":"弓兵營","bid":42,"maxLev":18,"buildType":26},"40":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"TotalCapacity":1000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[],"Clout":0,"Metal":0},{"Wood":100,"Power":100,"Money":0,"TotalCapacity":1500000,"Time":1,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1}],"Clout":500,"Metal":0},{"Wood":400,"Power":720,"Money":0,"TotalCapacity":2000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":2}],"Clout":1000,"Metal":0},{"Wood":700,"Power":1440,"Money":0,"TotalCapacity":2500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":3}],"Clout":1500,"Metal":0},{"Wood":1000,"Power":2160,"Money":0,"TotalCapacity":3000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":4}],"Clout":2000,"Metal":0},{"Wood":1300,"Power":2880,"Money":0,"TotalCapacity":3500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":5}],"Clout":2500,"Metal":0},{"Wood":1560,"Power":3600,"Money":0,"TotalCapacity":4000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":6}],"Clout":3000,"Metal":2340},{"Wood":2600,"Power":4320,"Money":0,"TotalCapacity":4500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":7}],"Clout":3500,"Metal":3900},{"Wood":3250,"Power":5040,"Money":8125,"TotalCapacity":5000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":8}],"Clout":4000,"Metal":8125},{"Wood":7000,"Power":5760,"Money":17500,"TotalCapacity":5500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":9}],"Clout":5000,"Metal":17500},{"Wood":10000,"Power":6480,"Money":25000,"TotalCapacity":6000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":10}],"Clout":6000,"Metal":25000},{"Wood":13000,"Power":7200,"Money":32500,"TotalCapacity":6500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":11}],"Clout":7000,"Metal":32500},{"Wood":16500,"Power":7920,"Money":41250,"TotalCapacity":7000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":12}],"Clout":8500,"Metal":41250},{"Wood":20000,"Power":8640,"Money":50000,"TotalCapacity":7500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":13}],"Clout":10000,"Metal":50000},{"Wood":23500,"Power":9360,"Money":58750,"TotalCapacity":8000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":14}],"Clout":11500,"Metal":58750},{"Wood":31500,"Power":10080,"Money":78750,"TotalCapacity":8500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":15}],"Clout":13500,"Metal":78750},{"Wood":40000,"Power":10800,"Money":100000,"TotalCapacity":9000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":16}],"Clout":15500,"Metal":100000},{"Wood":48500,"Power":11520,"Money":121250,"TotalCapacity":9500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":17}],"Clout":17500,"Metal":121250},{"Wood":58200,"Power":12500,"Money":145500,"TotalCapacity":10000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":48,"lev":1},{"bid":1,"lev":18}],"Clout":20000,"Metal":145500}],"name":"木料倉","bid":40,"maxLev":18,"buildType":23},"41":{"initLev":1,"levels":[{"Wood":0,"Power":0,"Stype":1001,"Money":0,"UpgradeLimit":[],"Bonus":0,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":0},{"Wood":1600,"Power":1600,"Stype":1001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":1}],"Bonus":0.005,"CloutLimit":0,"Item":[],"Time":1,"Metal":0,"Level":1,"Stage":1,"Clout":8000},{"Wood":6400,"Power":11000,"Stype":1001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.01,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":16000},{"Wood":11200,"Power":22000,"Stype":1001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.015,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":24000},{"Wood":16000,"Power":33000,"Stype":1001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.02,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":32000},{"Wood":20800,"Power":44000,"Stype":1001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":5}],"Bonus":0.025,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":40000},{"Wood":31200,"Power":55000,"Stype":1001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":6}],"Bonus":0.03,"CloutLimit":0,"Item":[],"Time":0,"Metal":31200,"Level":1,"Stage":1,"Clout":48000},{"Wood":52000,"Power":66000,"Stype":1001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":7}],"Bonus":0.035,"CloutLimit":0,"Item":[],"Time":0,"Metal":52000,"Level":1,"Stage":1,"Clout":56000},{"Wood":104000,"Power":77000,"Stype":1001,"Money":104000,"UpgradeLimit":[{"bid":1,"lev":8}],"Bonus":0.04,"CloutLimit":0,"Item":[],"Time":0,"Metal":104000,"Level":1,"Stage":1,"Clout":64000},{"Wood":210000,"Power":88000,"Stype":1002,"Money":210000,"UpgradeLimit":[{"bid":1,"lev":9}],"Bonus":0.045,"CloutLimit":0,"Item":[],"Time":0,"Metal":210000,"Level":2,"Stage":2,"Clout":80000},{"Wood":320000,"Power":99000,"Stype":1002,"Money":320000,"UpgradeLimit":[{"bid":1,"lev":10}],"Bonus":0.05,"CloutLimit":0,"Item":[],"Time":0,"Metal":320000,"Level":2,"Stage":2,"Clout":96000},{"Wood":430000,"Power":110000,"Stype":1002,"Money":430000,"UpgradeLimit":[{"bid":1,"lev":11}],"Bonus":0.055,"CloutLimit":0,"Item":[],"Time":0,"Metal":430000,"Level":2,"Stage":2,"Clout":112000},{"Wood":560000,"Power":121000,"Stype":1103,"Money":560000,"UpgradeLimit":[{"bid":1,"lev":12}],"Bonus":0.06,"CloutLimit":0,"Item":[],"Time":0,"Metal":560000,"Level":3,"Stage":3,"Clout":136000},{"Wood":680000,"Power":132000,"Stype":1103,"Money":680000,"UpgradeLimit":[{"bid":1,"lev":13}],"Bonus":0.065,"CloutLimit":0,"Item":[],"Time":0,"Metal":680000,"Level":3,"Stage":3,"Clout":160000},{"Wood":800000,"Power":143000,"Stype":1103,"Money":800000,"UpgradeLimit":[{"bid":1,"lev":14}],"Bonus":0.07,"CloutLimit":0,"Item":[],"Time":0,"Metal":800000,"Level":3,"Stage":3,"Clout":184000},{"Wood":1100000,"Power":154000,"Stype":1104,"Money":1100000,"UpgradeLimit":[{"bid":1,"lev":15}],"Bonus":0.075,"CloutLimit":0,"Item":[],"Time":0,"Metal":1100000,"Level":4,"Stage":4,"Clout":216000},{"Wood":1400000,"Power":165000,"Stype":1104,"Money":1400000,"UpgradeLimit":[{"bid":1,"lev":16}],"Bonus":0.08,"CloutLimit":0,"Item":[],"Time":0,"Metal":1400000,"Level":4,"Stage":4,"Clout":248000},{"Wood":1700000,"Power":176000,"Stype":1104,"Money":1700000,"UpgradeLimit":[{"bid":1,"lev":17}],"Bonus":0.085,"CloutLimit":0,"Item":[],"Time":0,"Metal":1700000,"Level":4,"Stage":4,"Clout":280000},{"Wood":3400000,"Power":200000,"Stype":1105,"Money":3400000,"UpgradeLimit":[{"bid":1,"lev":18}],"Bonus":0.09,"CloutLimit":0,"Item":[],"Time":0,"Metal":3400000,"Level":5,"Stage":5,"Clout":320000}],"name":"盾兵營","bid":41,"maxLev":18,"buildType":25},"47":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[],"Clout":0,"ResOutput":0,"Time":0,"Metal":0},{"Wood":300,"Power":300,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":1500,"ResOutput":100,"Time":1,"Metal":0},{"Wood":1200,"Power":2100,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":3000,"ResOutput":200,"Time":0,"Metal":0},{"Wood":2100,"Power":4200,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":4500,"ResOutput":300,"Time":0,"Metal":0},{"Wood":3000,"Power":6300,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":6000,"ResOutput":400,"Time":0,"Metal":0},{"Wood":3900,"Power":8400,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":7500,"ResOutput":500,"Time":0,"Metal":0},{"Wood":7020,"Power":10500,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":9000,"ResOutput":600,"Time":0,"Metal":4680},{"Wood":11700,"Power":12600,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":7}],"Clout":10500,"ResOutput":700,"Time":0,"Metal":7800},{"Wood":24400,"Power":14700,"Money":24400,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":12000,"ResOutput":800,"Time":0,"Metal":9700},{"Wood":50000,"Power":16800,"Money":50000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":9}],"Clout":15000,"ResOutput":900,"Time":0,"Metal":20000},{"Wood":75000,"Power":18900,"Money":75000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":10}],"Clout":18000,"ResOutput":1000,"Time":0,"Metal":30000},{"Wood":100000,"Power":21000,"Money":100000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":11}],"Clout":21000,"ResOutput":1100,"Time":0,"Metal":40000},{"Wood":125000,"Power":23100,"Money":125000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":12}],"Clout":25500,"ResOutput":1200,"Time":0,"Metal":50000},{"Wood":150000,"Power":25200,"Money":150000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":13}],"Clout":30000,"ResOutput":1300,"Time":0,"Metal":60000},{"Wood":175000,"Power":27300,"Money":175000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":14}],"Clout":34500,"ResOutput":1400,"Time":0,"Metal":70000},{"Wood":237500,"Power":29400,"Money":237500,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":15}],"Clout":40500,"ResOutput":1500,"Time":0,"Metal":95000},{"Wood":300000,"Power":31500,"Money":300000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":16}],"Clout":46500,"ResOutput":1600,"Time":0,"Metal":120000},{"Wood":362500,"Power":33600,"Money":362500,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":17}],"Clout":52500,"ResOutput":1700,"Time":0,"Metal":145000},{"Wood":435000,"Power":37500,"Money":435000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":18}],"Clout":60000,"ResOutput":1800,"Time":0,"Metal":174000}],"name":"石作坊","bid":47,"maxLev":18,"buildType":31},"46":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[],"Clout":0,"ResOutput":0,"Time":0,"Metal":0},{"Wood":300,"Power":300,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1}],"Clout":1500,"ResOutput":100,"Time":1,"Metal":0},{"Wood":1200,"Power":2100,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":2}],"Clout":3000,"ResOutput":200,"Time":0,"Metal":0},{"Wood":2100,"Power":4200,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":3}],"Clout":4500,"ResOutput":300,"Time":0,"Metal":0},{"Wood":3000,"Power":6300,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":4}],"Clout":6000,"ResOutput":400,"Time":0,"Metal":0},{"Wood":3900,"Power":8400,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":5}],"Clout":7500,"ResOutput":500,"Time":0,"Metal":0},{"Wood":5850,"Power":10500,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":6}],"Clout":9000,"ResOutput":600,"Time":0,"Metal":5850},{"Wood":9800,"Power":12600,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":7}],"Clout":10500,"ResOutput":700,"Time":0,"Metal":9800},{"Wood":19500,"Power":14700,"Money":19500,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":8}],"Clout":12000,"ResOutput":800,"Time":0,"Metal":19500},{"Wood":40000,"Power":16800,"Money":40000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":9}],"Clout":15000,"ResOutput":900,"Time":0,"Metal":40000},{"Wood":60000,"Power":18900,"Money":60000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":10}],"Clout":18000,"ResOutput":1000,"Time":0,"Metal":60000},{"Wood":80000,"Power":21000,"Money":80000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":11}],"Clout":21000,"ResOutput":1100,"Time":0,"Metal":80000},{"Wood":100000,"Power":23100,"Money":100000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":12}],"Clout":25500,"ResOutput":1200,"Time":0,"Metal":100000},{"Wood":120000,"Power":25200,"Money":120000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":13}],"Clout":30000,"ResOutput":1300,"Time":0,"Metal":120000},{"Wood":140000,"Power":27300,"Money":140000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":14}],"Clout":34500,"ResOutput":1400,"Time":0,"Metal":140000},{"Wood":190000,"Power":29400,"Money":190000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":15}],"Clout":40500,"ResOutput":1500,"Time":0,"Metal":190000},{"Wood":240000,"Power":31500,"Money":240000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":16}],"Clout":46500,"ResOutput":1600,"Time":0,"Metal":240000},{"Wood":290000,"Power":33600,"Money":290000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":17}],"Clout":52500,"ResOutput":1700,"Time":0,"Metal":290000},{"Wood":348000,"Power":37500,"Money":348000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":18}],"Clout":60000,"ResOutput":1800,"Time":0,"Metal":348000}],"name":"磨坊","bid":46,"maxLev":18,"buildType":30},"56":{"initLev":1,"levels":[{"Wood":0,"Power":0,"Reducation":0,"Clout":0,"Money":0,"CloutLimit":0,"Time":0,"DefendTroop":0,"Wall":0,"UpgradeLimit":[],"Item":[],"Metal":0},{"Wood":400,"Power":400,"Reducation":0.75,"Clout":2000,"Money":0,"CloutLimit":0,"Time":1,"DefendTroop":500,"Wall":300000,"UpgradeLimit":[{"bid":1,"lev":1}],"Item":[],"Metal":0},{"Wood":1600,"Power":2900,"Reducation":0.75,"Clout":4000,"Money":0,"CloutLimit":0,"Time":0,"DefendTroop":1500,"Wall":310000,"UpgradeLimit":[{"bid":1,"lev":2}],"Item":[],"Metal":0},{"Wood":2800,"Power":5800,"Reducation":0.75,"Clout":6000,"Money":0,"CloutLimit":0,"Time":0,"DefendTroop":2000,"Wall":320000,"UpgradeLimit":[{"bid":1,"lev":3}],"Item":[],"Metal":0},{"Wood":4000,"Power":8700,"Reducation":0.76,"Clout":8000,"Money":0,"CloutLimit":0,"Time":0,"DefendTroop":2500,"Wall":330000,"UpgradeLimit":[{"bid":1,"lev":4}],"Item":[],"Metal":0},{"Wood":5200,"Power":11600,"Reducation":0.76,"Clout":10000,"Money":0,"CloutLimit":0,"Time":0,"DefendTroop":3000,"Wall":340000,"UpgradeLimit":[{"bid":1,"lev":5}],"Item":[],"Metal":0},{"Wood":6240,"Power":14500,"Reducation":0.76,"Clout":12000,"Money":0,"CloutLimit":0,"Time":0,"DefendTroop":3500,"Wall":350000,"UpgradeLimit":[{"bid":1,"lev":6}],"Item":[],"Metal":9360},{"Wood":10400,"Power":17400,"Reducation":0.77,"Clout":14000,"Money":0,"CloutLimit":0,"Time":0,"DefendTroop":4000,"Wall":360000,"UpgradeLimit":[{"bid":1,"lev":7}],"Item":[],"Metal":15600},{"Wood":19500,"Power":20300,"Reducation":0.77,"Clout":16000,"Money":26000,"CloutLimit":0,"Time":0,"DefendTroop":5000,"Wall":370000,"UpgradeLimit":[{"bid":1,"lev":8}],"Item":[],"Metal":32500},{"Wood":40800,"Power":23200,"Reducation":0.77,"Clout":20000,"Money":54300,"CloutLimit":0,"Time":0,"DefendTroop":7000,"Wall":380000,"UpgradeLimit":[{"bid":1,"lev":9}],"Item":[],"Metal":68000},{"Wood":62500,"Power":26100,"Reducation":0.78,"Clout":24000,"Money":83300,"CloutLimit":0,"Time":0,"DefendTroop":7500,"Wall":390000,"UpgradeLimit":[{"bid":1,"lev":10}],"Item":[],"Metal":104000},{"Wood":82000,"Power":29000,"Reducation":0.78,"Clout":28000,"Money":110000,"CloutLimit":0,"Time":0,"DefendTroop":8200,"Wall":400000,"UpgradeLimit":[{"bid":1,"lev":11}],"Item":[],"Metal":137000},{"Wood":105000,"Power":31900,"Reducation":0.79,"Clout":34000,"Money":140000,"CloutLimit":0,"Time":0,"DefendTroop":8700,"Wall":410000,"UpgradeLimit":[{"bid":1,"lev":12}],"Item":[],"Metal":175000},{"Wood":128000,"Power":34800,"Reducation":0.79,"Clout":40000,"Money":170000,"CloutLimit":0,"Time":0,"DefendTroop":9100,"Wall":420000,"UpgradeLimit":[{"bid":1,"lev":13}],"Item":[],"Metal":213000},{"Wood":150000,"Power":37700,"Reducation":0.79,"Clout":46000,"Money":200000,"CloutLimit":0,"Time":0,"DefendTroop":9500,"Wall":430000,"UpgradeLimit":[{"bid":1,"lev":14}],"Item":[],"Metal":250000},{"Wood":205000,"Power":40600,"Reducation":0.8,"Clout":54000,"Money":273000,"CloutLimit":0,"Time":0,"DefendTroop":10500,"Wall":440000,"UpgradeLimit":[{"bid":1,"lev":15}],"Item":[],"Metal":340000},{"Wood":260000,"Power":43500,"Reducation":0.8,"Clout":62000,"Money":347000,"CloutLimit":0,"Time":0,"DefendTroop":11000,"Wall":460000,"UpgradeLimit":[{"bid":1,"lev":16}],"Item":[],"Metal":433000},{"Wood":315000,"Power":46400,"Reducation":0.81,"Clout":70000,"Money":420000,"CloutLimit":0,"Time":0,"DefendTroop":11500,"Wall":480000,"UpgradeLimit":[{"bid":1,"lev":17}],"Item":[],"Metal":525000},{"Wood":630000,"Power":50000,"Reducation":0.82,"Clout":80000,"Money":840000,"CloutLimit":0,"Time":0,"DefendTroop":12000,"Wall":500000,"UpgradeLimit":[{"bid":1,"lev":18}],"Item":[],"Metal":1050000}],"name":"外城門","bid":56,"maxLev":18,"buildType":40},"44":{"initLev":1,"levels":[{"Wood":0,"Power":0,"Stype":4001,"Money":0,"UpgradeLimit":[],"Bonus":0,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":0},{"Wood":1600,"Power":1600,"Stype":4001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":1}],"Bonus":0.005,"CloutLimit":0,"Item":[],"Time":1,"Metal":0,"Level":1,"Stage":1,"Clout":8000},{"Wood":6400,"Power":11000,"Stype":4001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.01,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":16000},{"Wood":11200,"Power":22000,"Stype":4001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.015,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":24000},{"Wood":16000,"Power":33000,"Stype":4001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Bonus":0.02,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":32000},{"Wood":20800,"Power":44000,"Stype":4001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":5}],"Bonus":0.025,"CloutLimit":0,"Item":[],"Time":0,"Metal":0,"Level":1,"Stage":1,"Clout":40000},{"Wood":31200,"Power":55000,"Stype":4001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":6}],"Bonus":0.03,"CloutLimit":0,"Item":[],"Time":0,"Metal":31200,"Level":1,"Stage":1,"Clout":48000},{"Wood":52000,"Power":66000,"Stype":4001,"Money":0,"UpgradeLimit":[{"bid":1,"lev":7}],"Bonus":0.035,"CloutLimit":0,"Item":[],"Time":0,"Metal":52000,"Level":1,"Stage":1,"Clout":56000},{"Wood":104000,"Power":77000,"Stype":4001,"Money":104000,"UpgradeLimit":[{"bid":1,"lev":8}],"Bonus":0.04,"CloutLimit":0,"Item":[],"Time":0,"Metal":104000,"Level":1,"Stage":1,"Clout":64000},{"Wood":210000,"Power":88000,"Stype":4002,"Money":210000,"UpgradeLimit":[{"bid":1,"lev":9}],"Bonus":0.045,"CloutLimit":0,"Item":[],"Time":0,"Metal":210000,"Level":2,"Stage":2,"Clout":80000},{"Wood":320000,"Power":99000,"Stype":4002,"Money":320000,"UpgradeLimit":[{"bid":1,"lev":10}],"Bonus":0.05,"CloutLimit":0,"Item":[],"Time":0,"Metal":320000,"Level":2,"Stage":2,"Clout":96000},{"Wood":430000,"Power":110000,"Stype":4002,"Money":430000,"UpgradeLimit":[{"bid":1,"lev":11}],"Bonus":0.055,"CloutLimit":0,"Item":[],"Time":0,"Metal":430000,"Level":2,"Stage":2,"Clout":112000},{"Wood":560000,"Power":121000,"Stype":4103,"Money":560000,"UpgradeLimit":[{"bid":1,"lev":12}],"Bonus":0.06,"CloutLimit":0,"Item":[],"Time":0,"Metal":560000,"Level":3,"Stage":3,"Clout":136000},{"Wood":680000,"Power":132000,"Stype":4103,"Money":680000,"UpgradeLimit":[{"bid":1,"lev":13}],"Bonus":0.065,"CloutLimit":0,"Item":[],"Time":0,"Metal":680000,"Level":3,"Stage":3,"Clout":160000},{"Wood":800000,"Power":143000,"Stype":4103,"Money":800000,"UpgradeLimit":[{"bid":1,"lev":14}],"Bonus":0.07,"CloutLimit":0,"Item":[],"Time":0,"Metal":800000,"Level":3,"Stage":3,"Clout":184000},{"Wood":1100000,"Power":154000,"Stype":4104,"Money":1100000,"UpgradeLimit":[{"bid":1,"lev":15}],"Bonus":0.075,"CloutLimit":0,"Item":[],"Time":0,"Metal":1100000,"Level":4,"Stage":4,"Clout":216000},{"Wood":1400000,"Power":165000,"Stype":4104,"Money":1400000,"UpgradeLimit":[{"bid":1,"lev":16}],"Bonus":0.08,"CloutLimit":0,"Item":[],"Time":0,"Metal":1400000,"Level":4,"Stage":4,"Clout":248000},{"Wood":1700000,"Power":176000,"Stype":4104,"Money":1700000,"UpgradeLimit":[{"bid":1,"lev":17}],"Bonus":0.085,"CloutLimit":0,"Item":[],"Time":0,"Metal":1700000,"Level":4,"Stage":4,"Clout":280000},{"Wood":3400000,"Power":200000,"Stype":4105,"Money":3400000,"UpgradeLimit":[{"bid":1,"lev":18}],"Bonus":0.09,"CloutLimit":0,"Item":[],"Time":0,"Metal":3400000,"Level":5,"Stage":5,"Clout":320000}],"name":"騎兵營","bid":44,"maxLev":18,"buildType":28},"48":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[],"Clout":0,"ResOutput":0,"Time":0,"Metal":0},{"Wood":300,"Power":300,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":1}],"Clout":1500,"ResOutput":100,"Time":1,"Metal":0},{"Wood":1200,"Power":2100,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":2}],"Clout":3000,"ResOutput":200,"Time":0,"Metal":0},{"Wood":2100,"Power":4200,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":3}],"Clout":4500,"ResOutput":300,"Time":0,"Metal":0},{"Wood":3000,"Power":6300,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":4}],"Clout":6000,"ResOutput":400,"Time":0,"Metal":0},{"Wood":3900,"Power":8400,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":5}],"Clout":7500,"ResOutput":500,"Time":0,"Metal":0},{"Wood":4680,"Power":10500,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":9000,"ResOutput":600,"Time":0,"Metal":7020},{"Wood":7800,"Power":12600,"Money":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":7}],"Clout":10500,"ResOutput":700,"Time":0,"Metal":11700},{"Wood":9700,"Power":14700,"Money":24400,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":12000,"ResOutput":800,"Time":0,"Metal":24400},{"Wood":20000,"Power":16800,"Money":50000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":9}],"Clout":15000,"ResOutput":900,"Time":0,"Metal":50000},{"Wood":30000,"Power":18900,"Money":75000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":10}],"Clout":18000,"ResOutput":1000,"Time":0,"Metal":75000},{"Wood":40000,"Power":21000,"Money":100000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":11}],"Clout":21000,"ResOutput":1100,"Time":0,"Metal":100000},{"Wood":50000,"Power":23100,"Money":125000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":12}],"Clout":25500,"ResOutput":1200,"Time":0,"Metal":125000},{"Wood":60000,"Power":25200,"Money":150000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":13}],"Clout":30000,"ResOutput":1300,"Time":0,"Metal":150000},{"Wood":70000,"Power":27300,"Money":175000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":14}],"Clout":34500,"ResOutput":1400,"Time":0,"Metal":175000},{"Wood":95000,"Power":29400,"Money":237500,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":15}],"Clout":40500,"ResOutput":1500,"Time":0,"Metal":237500},{"Wood":120000,"Power":31500,"Money":300000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":16}],"Clout":46500,"ResOutput":1600,"Time":0,"Metal":300000},{"Wood":145000,"Power":33600,"Money":362500,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":17}],"Clout":52500,"ResOutput":1700,"Time":0,"Metal":362500},{"Wood":174000,"Power":37500,"Money":435000,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":18}],"Clout":60000,"ResOutput":1800,"Time":0,"Metal":435000}],"name":"木工坊","bid":48,"maxLev":18,"buildType":32},"1":{"initLev":1,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"UpgradeLimit":[],"Clout":0,"Recommend":[],"Item":[],"LandNumber":0,"Time":0,"ResonanceSlot":0,"PolicySlot":0,"Metal":0},{"Wood":3000,"Power":3000,"Money":0,"CloutLimit":0,"UpgradeLimit":[],"Clout":15000,"Recommend":[],"Item":[],"LandNumber":0,"Time":1,"ResonanceSlot":3,"PolicySlot":0,"Metal":0},{"Wood":12000,"Power":21000,"Money":0,"CloutLimit":53000,"UpgradeLimit":[],"Clout":30000,"Recommend":[],"Item":[],"LandNumber":0,"Time":0,"ResonanceSlot":6,"PolicySlot":0,"Metal":0},{"Wood":21000,"Power":42000,"Money":0,"CloutLimit":76000,"UpgradeLimit":[],"Clout":45000,"Recommend":[],"Item":[],"LandNumber":0,"Time":0,"ResonanceSlot":6,"PolicySlot":0,"Metal":0},{"Wood":30000,"Power":63000,"Money":0,"CloutLimit":119000,"UpgradeLimit":[],"Clout":60000,"Recommend":[[{"bid":6,"lev":4},{"bid":41,"lev":4},{"bid":42,"lev":4},{"bid":44,"lev":4}]],"Item":[],"LandNumber":0,"Time":0,"ResonanceSlot":8,"PolicySlot":0,"Metal":0},{"Wood":39000,"Power":84000,"Money":0,"CloutLimit":226000,"UpgradeLimit":[],"Clout":75000,"Recommend":[[{"bid":5,"lev":4},{"bid":19,"lev":3},{"bid":40,"lev":3},{"bid":41,"lev":5},{"bid":42,"lev":5},{"bid":44,"lev":5},{"bid":46,"lev":4},{"bid":48,"lev":4},{"bid":56,"lev":3}]],"Item":[],"LandNumber":0,"Time":0,"ResonanceSlot":8,"PolicySlot":0,"Metal":0},{"Wood":58500,"Power":105000,"Money":0,"CloutLimit":280000,"UpgradeLimit":[],"Recommend":[[{"bid":3,"lev":1},{"bid":5,"lev":5},{"bid":6,"lev":5},{"bid":10,"lev":4},{"bid":47,"lev":4},{"bid":56,"lev":4}]],"Time":0,"Clout":90000,"Item":[],"ResonanceSlot":8,"PolicySlot":0,"LandNumber":3},{"Wood":97500,"Power":126000,"Money":0,"CloutLimit":376000,"UpgradeLimit":[],"Clout":105000,"Recommend":[[{"bid":5,"lev":7},{"bid":6,"lev":7},{"bid":41,"lev":7},{"bid":42,"lev":7},{"bid":44,"lev":7}]],"Item":[],"LandNumber":3,"Time":0,"ResonanceSlot":12,"PolicySlot":0,"Metal":97500},{"Wood":200000,"Power":147000,"Money":0,"CloutLimit":475000,"UpgradeLimit":[],"Clout":120000,"Recommend":[[{"bid":5,"lev":8},{"bid":6,"lev":8},{"bid":41,"lev":8},{"bid":42,"lev":8},{"bid":44,"lev":8},{"bid":55,"lev":4}]],"Item":[],"LandNumber":3,"Time":0,"ResonanceSlot":12,"PolicySlot":0,"Metal":200000},{"Wood":400000,"Power":168000,"Money":400000,"CloutLimit":590000,"UpgradeLimit":[],"Clout":150000,"Recommend":[[{"bid":3,"lev":2},{"bid":5,"lev":9},{"bid":6,"lev":9},{"bid":41,"lev":9},{"bid":42,"lev":9},{"bid":44,"lev":9},{"bid":55,"lev":7}]],"Item":[],"LandNumber":3,"Time":0,"ResonanceSlot":12,"PolicySlot":0,"Metal":400000},{"Wood":610000,"Power":189000,"Money":610000,"CloutLimit":740000,"UpgradeLimit":[],"Clout":180000,"Recommend":[[{"bid":5,"lev":10},{"bid":6,"lev":10},{"bid":41,"lev":10},{"bid":42,"lev":10},{"bid":44,"lev":10},{"bid":55,"lev":9}]],"Item":[],"LandNumber":6,"Time":0,"ResonanceSlot":15,"PolicySlot":1,"Metal":610000},{"Wood":820000,"Power":210000,"Money":820000,"CloutLimit":910000,"UpgradeLimit":[],"Clout":210000,"Recommend":[[{"bid":5,"lev":11},{"bid":6,"lev":11},{"bid":41,"lev":11},{"bid":42,"lev":11},{"bid":44,"lev":11},{"bid":55,"lev":11}]],"Item":[],"LandNumber":6,"Time":0,"ResonanceSlot":15,"PolicySlot":1,"Metal":820000},{"Wood":1040000,"Power":231000,"Money":1040000,"CloutLimit":1100000,"UpgradeLimit":[],"Clout":255000,"Recommend":[[{"bid":3,"lev":3},{"bid":5,"lev":12},{"bid":6,"lev":12},{"bid":41,"lev":12},{"bid":42,"lev":12},{"bid":44,"lev":12},{"bid":55,"lev":12}]],"Item":[],"LandNumber":6,"Time":0,"ResonanceSlot":15,"PolicySlot":1,"Metal":1040000},{"Wood":1280000,"Power":252000,"Money":1280000,"CloutLimit":1310000,"UpgradeLimit":[],"Clout":300000,"Recommend":[[{"bid":5,"lev":13},{"bid":6,"lev":13},{"bid":41,"lev":13},{"bid":42,"lev":13},{"bid":44,"lev":13},{"bid":55,"lev":13}]],"Item":[],"LandNumber":6,"Time":0,"ResonanceSlot":18,"PolicySlot":2,"Metal":1280000},{"Wood":1520000,"Power":273000,"Money":1520000,"CloutLimit":1540000,"UpgradeLimit":[],"Clout":345000,"Recommend":[[{"bid":5,"lev":14},{"bid":6,"lev":14},{"bid":41,"lev":14},{"bid":42,"lev":14},{"bid":44,"lev":14},{"bid":55,"lev":14}]],"Item":[],"LandNumber":9,"Time":0,"ResonanceSlot":18,"PolicySlot":2,"Metal":1520000},{"Wood":2000000,"Power":294000,"Money":2000000,"CloutLimit":1800000,"UpgradeLimit":[],"Clout":405000,"Recommend":[[{"bid":3,"lev":4},{"bid":5,"lev":15},{"bid":6,"lev":15},{"bid":41,"lev":15},{"bid":42,"lev":15},{"bid":44,"lev":15},{"bid":55,"lev":15}]],"Item":[],"LandNumber":9,"Time":0,"ResonanceSlot":18,"PolicySlot":2,"Metal":2000000},{"Wood":2600000,"Power":315000,"Money":2600000,"CloutLimit":2090000,"UpgradeLimit":[],"Clout":465000,"Recommend":[[{"bid":5,"lev":16},{"bid":6,"lev":16},{"bid":41,"lev":16},{"bid":42,"lev":16},{"bid":44,"lev":16},{"bid":55,"lev":16}]],"Item":[],"LandNumber":9,"Time":0,"ResonanceSlot":18,"PolicySlot":3,"Metal":2600000},{"Wood":3200000,"Power":336000,"Money":3200000,"CloutLimit":2410000,"UpgradeLimit":[],"Clout":525000,"Recommend":[[{"bid":5,"lev":17},{"bid":6,"lev":17},{"bid":41,"lev":17},{"bid":42,"lev":17},{"bid":44,"lev":17},{"bid":55,"lev":17}]],"Item":[],"LandNumber":9,"Time":0,"ResonanceSlot":21,"PolicySlot":3,"Metal":3200000},{"Wood":8000000,"Power":375000,"Money":8000000,"CloutLimit":2760000,"UpgradeLimit":[],"Clout":600000,"Recommend":[[{"bid":3,"lev":5},{"bid":5,"lev":18},{"bid":6,"lev":18},{"bid":41,"lev":18},{"bid":42,"lev":18},{"bid":44,"lev":18},{"bid":55,"lev":18}]],"Item":[],"LandNumber":12,"Time":0,"ResonanceSlot":21,"PolicySlot":3,"Metal":8000000}],"name":"君主殿","bid":1,"maxLev":18,"buildType":1},"3":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"Time":0,"Clout":0,"UpgradeLimit":[],"Item":[],"Metal":0},{"Wood":18600,"Power":15000,"Money":0,"CloutLimit":0,"Time":1,"Clout":54000,"UpgradeLimit":[{"bid":10,"lev":1},{"bid":47,"lev":1},{"bid":1,"lev":6}],"Item":[],"Metal":43400},{"Wood":260000,"Power":30000,"Money":260000,"CloutLimit":0,"Time":0,"Clout":90000,"UpgradeLimit":[{"bid":10,"lev":1},{"bid":47,"lev":1},{"bid":1,"lev":9}],"Item":[],"Metal":520000},{"Wood":560000,"Power":45000,"Money":560000,"CloutLimit":0,"Time":0,"Clout":153000,"UpgradeLimit":[{"bid":10,"lev":1},{"bid":47,"lev":1},{"bid":1,"lev":12}],"Item":[],"Metal":1120000},{"Wood":1150000,"Power":60000,"Money":1150000,"CloutLimit":0,"Time":0,"Clout":243000,"UpgradeLimit":[{"bid":10,"lev":1},{"bid":47,"lev":1},{"bid":1,"lev":15}],"Item":[],"Metal":2300000},{"Wood":2300000,"Power":75000,"Money":2300000,"CloutLimit":0,"Time":0,"Clout":360000,"UpgradeLimit":[{"bid":10,"lev":1},{"bid":47,"lev":1},{"bid":1,"lev":18}],"Item":[],"Metal":4600000}],"name":"研學館","bid":3,"maxLev":5,"buildType":3},"5":{"initLev":0,"levels":[{"Wood":0,"BaseSpeed1":0,"CloutLimit":0,"Power":0,"Money":0,"MaxSoldier":50000,"Clout":0,"SourceSoldier4":10000,"BaseSpeed2":0,"SourceSoldier1":10000,"Time":0,"SpeedUp":0,"SourceSoldier2":10000,"UpgradeLimit":[],"Item":[],"Metal":0},{"Wood":1200,"BaseSpeed1":0.12,"CloutLimit":0,"Power":1200,"Money":0,"MaxSoldier":80000,"Clout":6000,"SourceSoldier4":15000,"BaseSpeed2":2.7,"SourceSoldier1":15000,"Time":1,"SpeedUp":0.04,"SourceSoldier2":15000,"UpgradeLimit":[{"bid":1,"lev":2}],"Item":[],"Metal":0},{"Wood":4800,"BaseSpeed1":0.17,"CloutLimit":0,"Power":8700,"Money":0,"MaxSoldier":90000,"Clout":12000,"SourceSoldier4":20000,"BaseSpeed2":3.2,"SourceSoldier1":20000,"Time":0,"SpeedUp":0.08,"SourceSoldier2":20000,"UpgradeLimit":[{"bid":1,"lev":2}],"Item":[],"Metal":0},{"Wood":8400,"BaseSpeed1":0.22,"CloutLimit":0,"Power":17400,"Money":0,"MaxSoldier":100000,"Clout":18000,"SourceSoldier4":25000,"BaseSpeed2":3.7,"SourceSoldier1":25000,"Time":0,"SpeedUp":0.12,"SourceSoldier2":25000,"UpgradeLimit":[{"bid":1,"lev":3}],"Item":[],"Metal":0},{"Wood":12000,"BaseSpeed1":0.27,"CloutLimit":0,"Power":26100,"Money":0,"MaxSoldier":120000,"Clout":24000,"SourceSoldier4":30000,"BaseSpeed2":4.2,"SourceSoldier1":30000,"Time":0,"SpeedUp":0.16,"SourceSoldier2":30000,"UpgradeLimit":[{"bid":1,"lev":4}],"Item":[],"Metal":0},{"Wood":15600,"BaseSpeed1":0.32,"CloutLimit":0,"Power":34800,"Money":0,"MaxSoldier":140000,"Clout":30000,"SourceSoldier4":35000,"BaseSpeed2":4.7,"SourceSoldier1":35000,"Time":0,"SpeedUp":0.2,"SourceSoldier2":35000,"UpgradeLimit":[{"bid":1,"lev":5}],"Item":[],"Metal":0},{"Wood":32800,"BaseSpeed1":0.37,"CloutLimit":0,"Power":43500,"Money":0,"MaxSoldier":160000,"Clout":36000,"SourceSoldier4":40000,"BaseSpeed2":5.2,"SourceSoldier1":40000,"Time":0,"SpeedUp":0.24,"SourceSoldier2":40000,"UpgradeLimit":[{"bid":1,"lev":6}],"Item":[],"Metal":14000},{"Wood":54600,"BaseSpeed1":0.42,"CloutLimit":0,"Power":52200,"Money":0,"MaxSoldier":190000,"Clout":42000,"SourceSoldier4":45000,"BaseSpeed2":5.8,"SourceSoldier1":45000,"Time":0,"SpeedUp":0.28,"SourceSoldier2":45000,"UpgradeLimit":[{"bid":1,"lev":7}],"Item":[],"Metal":23400},{"Wood":97500,"BaseSpeed1":0.47,"CloutLimit":0,"Power":60900,"Money":97500,"MaxSoldier":220000,"Clout":48000,"SourceSoldier4":50000,"BaseSpeed2":6.4,"SourceSoldier1":50000,"Time":0,"SpeedUp":0.32,"SourceSoldier2":50000,"UpgradeLimit":[{"bid":1,"lev":8}],"Item":[],"Metal":39000},{"Wood":200000,"BaseSpeed1":0.52,"CloutLimit":0,"Power":69600,"Money":200000,"MaxSoldier":250000,"Clout":60000,"SourceSoldier4":55000,"BaseSpeed2":7,"SourceSoldier1":55000,"Time":0,"SpeedUp":0.36,"SourceSoldier2":55000,"UpgradeLimit":[{"bid":1,"lev":9}],"Item":[],"Metal":80000},{"Wood":300000,"BaseSpeed1":0.57,"CloutLimit":0,"Power":78300,"Money":300000,"MaxSoldier":290000,"Clout":72000,"SourceSoldier4":60000,"BaseSpeed2":7.6,"SourceSoldier1":60000,"Time":0,"SpeedUp":0.4,"SourceSoldier2":60000,"UpgradeLimit":[{"bid":1,"lev":10}],"Item":[],"Metal":120000},{"Wood":400000,"BaseSpeed1":0.62,"CloutLimit":0,"Power":87000,"Money":400000,"MaxSoldier":330000,"Clout":84000,"SourceSoldier4":65000,"BaseSpeed2":8.2,"SourceSoldier1":65000,"Time":0,"SpeedUp":0.44,"SourceSoldier2":65000,"UpgradeLimit":[{"bid":1,"lev":11}],"Item":[],"Metal":160000},{"Wood":520000,"BaseSpeed1":0.67,"CloutLimit":0,"Power":95700,"Money":520000,"MaxSoldier":370000,"Clout":102000,"SourceSoldier4":70000,"BaseSpeed2":8.8,"SourceSoldier1":70000,"Time":0,"SpeedUp":0.48,"SourceSoldier2":70000,"UpgradeLimit":[{"bid":1,"lev":12}],"Item":[],"Metal":210000},{"Wood":640000,"BaseSpeed1":0.72,"CloutLimit":0,"Power":104400,"Money":640000,"MaxSoldier":420000,"Clout":120000,"SourceSoldier4":75000,"BaseSpeed2":9.5,"SourceSoldier1":75000,"Time":0,"SpeedUp":0.52,"SourceSoldier2":75000,"UpgradeLimit":[{"bid":1,"lev":13}],"Item":[],"Metal":260000},{"Wood":760000,"BaseSpeed1":0.77,"CloutLimit":0,"Power":113100,"Money":760000,"MaxSoldier":470000,"Clout":138000,"SourceSoldier4":80000,"BaseSpeed2":10.2,"SourceSoldier1":80000,"Time":0,"SpeedUp":0.56,"SourceSoldier2":80000,"UpgradeLimit":[{"bid":1,"lev":14}],"Item":[],"Metal":310000},{"Wood":1040000,"BaseSpeed1":0.82,"CloutLimit":0,"Power":121800,"Money":1040000,"MaxSoldier":520000,"Clout":162000,"SourceSoldier4":85000,"BaseSpeed2":10.9,"SourceSoldier1":85000,"Time":0,"SpeedUp":0.6,"SourceSoldier2":85000,"UpgradeLimit":[{"bid":1,"lev":15}],"Item":[],"Metal":410000},{"Wood":1320000,"BaseSpeed1":0.87,"CloutLimit":0,"Power":130500,"Money":1320000,"MaxSoldier":580000,"Clout":186000,"SourceSoldier4":90000,"BaseSpeed2":11.6,"SourceSoldier1":90000,"Time":0,"SpeedUp":0.64,"SourceSoldier2":90000,"UpgradeLimit":[{"bid":1,"lev":16}],"Item":[],"Metal":520000},{"Wood":1600000,"BaseSpeed1":0.92,"CloutLimit":0,"Power":139200,"Money":1600000,"MaxSoldier":640000,"Clout":210000,"SourceSoldier4":95000,"BaseSpeed2":12.3,"SourceSoldier1":95000,"Time":0,"SpeedUp":0.68,"SourceSoldier2":95000,"UpgradeLimit":[{"bid":1,"lev":17}],"Item":[],"Metal":630000},{"Wood":3200000,"BaseSpeed1":0.97,"CloutLimit":0,"Power":150000,"Money":3200000,"MaxSoldier":700000,"Clout":240000,"SourceSoldier4":100000,"BaseSpeed2":13,"SourceSoldier1":100000,"Time":0,"SpeedUp":0.72,"SourceSoldier2":100000,"UpgradeLimit":[{"bid":1,"lev":18}],"Item":[],"Metal":1300000}],"name":"募兵所","bid":5,"maxLev":18,"buildType":5},"4":{"initLev":1,"levels":[{"Wood":0,"Power":0,"Money":0,"Item":[],"CloutLimit":0,"Time":0,"Clout":0,"Exp":0,"UpgradeLimit":[],"Cost":[0,null,0],"Metal":0},{"Wood":500,"Power":0,"Money":0,"Item":[],"CloutLimit":0,"Time":1,"Clout":0,"Exp":33,"UpgradeLimit":[{"bid":1,"lev":1}],"Cost":[9000,null,2000],"Metal":0}],"name":"演武堂","bid":4,"maxLev":1,"buildType":4},"6":{"initLev":0,"levels":[{"Wood":0,"TeamNum":1,"Money":0,"Clout":0,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0,"HeroNum":0,"UpgradeLimit":[],"Power":0,"Metal":0},{"Wood":2000,"TeamNum":1,"Money":0,"Clout":10000,"Item":[],"CloutLimit":0,"Time":1,"TroopSpeed":0.04,"HeroNum":0,"UpgradeLimit":[{"bid":40,"lev":1}],"Power":2000,"Metal":0},{"Wood":8000,"TeamNum":1,"Money":0,"Clout":20000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.08,"HeroNum":1,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":3}],"Power":14000,"Metal":0},{"Wood":14000,"TeamNum":1,"Money":0,"Clout":30000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.12,"HeroNum":1,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":4}],"Power":28000,"Metal":0},{"Wood":20000,"TeamNum":2,"Money":0,"Clout":40000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.16,"HeroNum":1,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":4}],"Power":42000,"Metal":0},{"Wood":26000,"TeamNum":2,"Money":0,"Clout":50000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.2,"HeroNum":1,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":5}],"Power":56000,"Metal":0},{"Wood":46800,"TeamNum":2,"Money":0,"Clout":60000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.24,"HeroNum":1,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":6}],"Power":70000,"Metal":31200},{"Wood":78000,"TeamNum":2,"Money":0,"Clout":70000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.28,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":7}],"Power":84000,"Metal":52000},{"Wood":195000,"TeamNum":2,"Money":65000,"Clout":80000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.32,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":8}],"Power":98000,"Metal":130000},{"Wood":400000,"TeamNum":2,"Money":130000,"Clout":100000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.36,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":9}],"Power":112000,"Metal":270000},{"Wood":610000,"TeamNum":3,"Money":200000,"Clout":120000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.4,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":10}],"Power":126000,"Metal":410000},{"Wood":820000,"TeamNum":3,"Money":270000,"Clout":140000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.44,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":11}],"Power":140000,"Metal":540000},{"Wood":1040000,"TeamNum":3,"Money":350000,"Clout":170000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.48,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":12}],"Power":154000,"Metal":700000},{"Wood":1280000,"TeamNum":4,"Money":430000,"Clout":200000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.52,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":13}],"Power":168000,"Metal":850000},{"Wood":1520000,"TeamNum":4,"Money":510000,"Clout":230000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.56,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":14}],"Power":182000,"Metal":1000000},{"Wood":2000000,"TeamNum":4,"Money":700000,"Clout":270000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.6,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":15}],"Power":196000,"Metal":1380000},{"Wood":2600000,"TeamNum":4,"Money":880000,"Clout":310000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.64,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":16}],"Power":210000,"Metal":1750000},{"Wood":3200000,"TeamNum":5,"Money":1060000,"Clout":350000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.68,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":17}],"Power":224000,"Metal":2120000},{"Wood":6400000,"TeamNum":5,"Money":2100000,"Clout":400000,"Item":[],"CloutLimit":0,"Time":0,"TroopSpeed":0.72,"HeroNum":2,"UpgradeLimit":[{"bid":40,"lev":1},{"bid":1,"lev":18}],"Power":250000,"Metal":4300000}],"name":"校場","bid":6,"maxLev":18,"buildType":6},"14":{"initLev":0,"levels":[{"Wood":0,"FarmerFood":0,"Power":0,"Money":0,"PickFood":0,"UpgradeLimit":[],"Clout":0,"FarmerWood":0,"CloutLimit":0,"Time":0,"Item":[],"PickWood":0,"ResOutput":0,"FarmerMetal":0,"Metal":0},{"Wood":300,"FarmerFood":1,"Power":300,"Money":0,"PickFood":1,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":1500,"FarmerWood":1,"CloutLimit":0,"Time":1,"Item":[],"PickWood":1,"ResOutput":100,"FarmerMetal":1,"Metal":0},{"Wood":1200,"FarmerFood":1,"Power":2100,"Money":0,"PickFood":1,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":3000,"FarmerWood":1,"CloutLimit":0,"Time":0,"Item":[],"PickWood":1,"ResOutput":200,"FarmerMetal":1,"Metal":0},{"Wood":2100,"FarmerFood":2,"Power":4200,"Money":0,"PickFood":2,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":4500,"FarmerWood":2,"CloutLimit":0,"Time":0,"Item":[],"PickWood":2,"ResOutput":300,"FarmerMetal":2,"Metal":0},{"Wood":3000,"FarmerFood":2,"Power":6300,"Money":0,"PickFood":2,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":6000,"FarmerWood":2,"CloutLimit":0,"Time":0,"Item":[],"PickWood":2,"ResOutput":400,"FarmerMetal":2,"Metal":0},{"Wood":3900,"FarmerFood":3,"Power":8400,"Money":0,"PickFood":3,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":7500,"FarmerWood":3,"CloutLimit":0,"Time":0,"Item":[],"PickWood":3,"ResOutput":500,"FarmerMetal":3,"Metal":0},{"Wood":5850,"FarmerFood":3,"Power":10500,"Money":0,"PickFood":3,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":9000,"FarmerWood":3,"CloutLimit":0,"Time":0,"Item":[],"PickWood":3,"ResOutput":600,"FarmerMetal":3,"Metal":5850},{"Wood":9750,"FarmerFood":4,"Power":12600,"Money":0,"PickFood":4,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":10500,"FarmerWood":4,"CloutLimit":0,"Time":0,"Item":[],"PickWood":4,"ResOutput":700,"FarmerMetal":4,"Metal":9750},{"Wood":24400,"FarmerFood":4,"Power":14700,"Money":9700,"PickFood":4,"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":12000,"FarmerWood":4,"CloutLimit":0,"Time":0,"Item":[],"PickWood":4,"ResOutput":800,"FarmerMetal":4,"Metal":24400},{"Wood":50000,"FarmerFood":5,"Power":16800,"Money":20000,"PickFood":5,"UpgradeLimit":[{"bid":1,"lev":9}],"Clout":15000,"FarmerWood":5,"CloutLimit":0,"Time":0,"Item":[],"PickWood":5,"ResOutput":900,"FarmerMetal":5,"Metal":50000},{"Wood":75000,"FarmerFood":5,"Power":18900,"Money":30000,"PickFood":5,"UpgradeLimit":[{"bid":1,"lev":10}],"Clout":18000,"FarmerWood":5,"CloutLimit":0,"Time":0,"Item":[],"PickWood":5,"ResOutput":1000,"FarmerMetal":5,"Metal":75000},{"Wood":100000,"FarmerFood":6,"Power":21000,"Money":40000,"PickFood":6,"UpgradeLimit":[{"bid":1,"lev":11}],"Clout":21000,"FarmerWood":6,"CloutLimit":0,"Time":0,"Item":[],"PickWood":6,"ResOutput":1100,"FarmerMetal":6,"Metal":100000},{"Wood":125000,"FarmerFood":6,"Power":23100,"Money":50000,"PickFood":6,"UpgradeLimit":[{"bid":1,"lev":12}],"Clout":25500,"FarmerWood":6,"CloutLimit":0,"Time":0,"Item":[],"PickWood":6,"ResOutput":1200,"FarmerMetal":6,"Metal":125000},{"Wood":150000,"FarmerFood":7,"Power":25200,"Money":60000,"PickFood":7,"UpgradeLimit":[{"bid":1,"lev":13}],"Clout":30000,"FarmerWood":7,"CloutLimit":0,"Time":0,"Item":[],"PickWood":7,"ResOutput":1300,"FarmerMetal":7,"Metal":150000},{"Wood":175000,"FarmerFood":7,"Power":27300,"Money":70000,"PickFood":7,"UpgradeLimit":[{"bid":1,"lev":14}],"Clout":34500,"FarmerWood":7,"CloutLimit":0,"Time":0,"Item":[],"PickWood":7,"ResOutput":1400,"FarmerMetal":7,"Metal":175000},{"Wood":237500,"FarmerFood":8,"Power":29400,"Money":95000,"PickFood":8,"UpgradeLimit":[{"bid":1,"lev":15}],"Clout":40500,"FarmerWood":8,"CloutLimit":0,"Time":0,"Item":[],"PickWood":8,"ResOutput":1500,"FarmerMetal":8,"Metal":237500},{"Wood":300000,"FarmerFood":8,"Power":31500,"Money":120000,"PickFood":8,"UpgradeLimit":[{"bid":1,"lev":16}],"Clout":46500,"FarmerWood":8,"CloutLimit":0,"Time":0,"Item":[],"PickWood":8,"ResOutput":1600,"FarmerMetal":8,"Metal":300000},{"Wood":362500,"FarmerFood":9,"Power":33600,"Money":145000,"PickFood":9,"UpgradeLimit":[{"bid":1,"lev":17}],"Clout":52500,"FarmerWood":9,"CloutLimit":0,"Time":0,"Item":[],"PickWood":9,"ResOutput":1700,"FarmerMetal":9,"Metal":362500},{"Wood":435000,"FarmerFood":9,"Power":37500,"Money":174000,"PickFood":9,"UpgradeLimit":[{"bid":1,"lev":18}],"Clout":60000,"FarmerWood":9,"CloutLimit":0,"Time":0,"Item":[],"PickWood":9,"ResOutput":1800,"FarmerMetal":9,"Metal":435000}],"name":"民居","bid":14,"maxLev":18,"buildType":24},"24":{"initLev":1,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"Time":0,"Clout":0,"UpgradeLimit":[],"Item":[],"Metal":0},{"Wood":500,"Power":0,"Money":0,"CloutLimit":0,"Time":1,"Clout":0,"UpgradeLimit":[{"bid":1,"lev":1}],"Item":[],"Metal":0}],"name":"薈英樓","bid":24,"maxLev":1,"buildType":14},"19":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"TotalCapacity":2000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[],"Clout":0,"Metal":0},{"Wood":100,"Power":100,"Money":0,"TotalCapacity":3000000,"Time":1,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1}],"Clout":500,"Metal":0},{"Wood":400,"Power":720,"Money":0,"TotalCapacity":4000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":2}],"Clout":1000,"Metal":0},{"Wood":700,"Power":1440,"Money":0,"TotalCapacity":5000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":3}],"Clout":1500,"Metal":0},{"Wood":1000,"Power":2160,"Money":0,"TotalCapacity":6000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":4}],"Clout":2000,"Metal":0},{"Wood":1300,"Power":2880,"Money":0,"TotalCapacity":7000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":5}],"Clout":2500,"Metal":0},{"Wood":1950,"Power":3600,"Money":0,"TotalCapacity":8000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":6}],"Clout":3000,"Metal":1950},{"Wood":3250,"Power":4320,"Money":0,"TotalCapacity":9000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":7}],"Clout":3500,"Metal":3250},{"Wood":6500,"Power":5040,"Money":6500,"TotalCapacity":10000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":8}],"Clout":4000,"Metal":6500},{"Wood":14000,"Power":5760,"Money":14000,"TotalCapacity":11000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":9}],"Clout":5000,"Metal":14000},{"Wood":20000,"Power":6480,"Money":20000,"TotalCapacity":12000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":10}],"Clout":6000,"Metal":20000},{"Wood":26000,"Power":7200,"Money":26000,"TotalCapacity":13000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":11}],"Clout":7000,"Metal":26000},{"Wood":33000,"Power":7920,"Money":33000,"TotalCapacity":14000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":12}],"Clout":8500,"Metal":33000},{"Wood":40000,"Power":8640,"Money":40000,"TotalCapacity":15000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":13}],"Clout":10000,"Metal":40000},{"Wood":47000,"Power":9360,"Money":47000,"TotalCapacity":16000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":14}],"Clout":11500,"Metal":47000},{"Wood":63000,"Power":10080,"Money":63000,"TotalCapacity":17000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":15}],"Clout":13500,"Metal":63000},{"Wood":80000,"Power":10800,"Money":80000,"TotalCapacity":18000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":16}],"Clout":15500,"Metal":80000},{"Wood":97000,"Power":11520,"Money":97000,"TotalCapacity":19000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":17}],"Clout":17500,"Metal":97000},{"Wood":116400,"Power":12500,"Money":116400,"TotalCapacity":20000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":5,"lev":1},{"bid":1,"lev":18}],"Clout":20000,"Metal":116400}],"name":"糧穀倉","bid":19,"maxLev":18,"buildType":11},"23":{"initLev":0,"levels":[{"Wood":0,"BeHelpedNum":0,"Power":0,"Money":0,"CloutLimit":0,"Time":0,"SpeedUp":0,"Clout":0,"UpgradeLimit":[],"Item":[],"Metal":0},{"Wood":500,"BeHelpedNum":8,"Power":0,"Money":0,"CloutLimit":0,"Time":1,"SpeedUp":0.01,"Clout":0,"UpgradeLimit":[{"bid":1,"lev":4}],"Item":[],"Metal":0}],"name":"四方館","bid":23,"maxLev":1,"buildType":13},"13":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"Time":0,"Clout":0,"UpgradeLimit":[],"Item":[],"Metal":0},{"Wood":500,"Power":0,"Money":0,"CloutLimit":0,"Time":1,"Clout":0,"UpgradeLimit":[{"bid":1,"lev":5}],"Item":[],"Metal":0}],"name":"佈告","bid":13,"maxLev":1,"buildType":9},"12":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"TotalCapacity":1000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[],"Clout":0,"Metal":0},{"Wood":100,"Power":100,"Money":0,"TotalCapacity":1500000,"Time":1,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":500,"Metal":0},{"Wood":400,"Power":720,"Money":0,"TotalCapacity":2000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":1000,"Metal":0},{"Wood":700,"Power":1440,"Money":0,"TotalCapacity":2500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":1500,"Metal":0},{"Wood":1000,"Power":2160,"Money":0,"TotalCapacity":3000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":2000,"Metal":0},{"Wood":1300,"Power":2880,"Money":0,"TotalCapacity":3500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":2500,"Metal":0},{"Wood":1950,"Power":3600,"Money":0,"TotalCapacity":4000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":3000,"Metal":1950},{"Wood":3250,"Power":4320,"Money":0,"TotalCapacity":4500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":3500,"Metal":3250},{"Wood":8125,"Power":5040,"Money":3250,"TotalCapacity":5000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":4000,"Metal":8125},{"Wood":17500,"Power":5760,"Money":7000,"TotalCapacity":5500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":9}],"Clout":5000,"Metal":17500},{"Wood":25000,"Power":6480,"Money":10000,"TotalCapacity":6000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":10}],"Clout":6000,"Metal":25000},{"Wood":32500,"Power":7200,"Money":13000,"TotalCapacity":6500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":11}],"Clout":7000,"Metal":32500},{"Wood":41250,"Power":7920,"Money":16500,"TotalCapacity":7000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":12}],"Clout":8500,"Metal":41250},{"Wood":50000,"Power":8640,"Money":20000,"TotalCapacity":7500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":13}],"Clout":10000,"Metal":50000},{"Wood":58750,"Power":9360,"Money":23500,"TotalCapacity":8000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":14}],"Clout":11500,"Metal":58750},{"Wood":78750,"Power":10080,"Money":31500,"TotalCapacity":8500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":15}],"Clout":13500,"Metal":78750},{"Wood":100000,"Power":10800,"Money":40000,"TotalCapacity":9000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":16}],"Clout":15500,"Metal":100000},{"Wood":121250,"Power":11520,"Money":48500,"TotalCapacity":9500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":17}],"Clout":17500,"Metal":121250},{"Wood":145500,"Power":12500,"Money":58200,"TotalCapacity":10000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":18}],"Clout":20000,"Metal":145500}],"name":"錢莊","bid":12,"maxLev":18,"buildType":8},"55":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"CloutLimit":0,"Time":0,"UpgradeLimit":[],"Clout":0,"SoldierNum":0,"Item":[],"Metal":0},{"Wood":2400,"Power":2400,"Money":0,"CloutLimit":0,"Time":1,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":8}],"Clout":12000,"SoldierNum":450,"Item":[],"Metal":0},{"Wood":9600,"Power":17000,"Money":0,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":8}],"Clout":24000,"SoldierNum":900,"Item":[],"Metal":0},{"Wood":16800,"Power":34000,"Money":0,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":8}],"Clout":36000,"SoldierNum":1350,"Item":[],"Metal":0},{"Wood":24000,"Power":51000,"Money":0,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":8}],"Clout":48000,"SoldierNum":1800,"Item":[],"Metal":0},{"Wood":31200,"Power":68000,"Money":0,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":9}],"Clout":60000,"SoldierNum":2250,"Item":[],"Metal":0},{"Wood":46800,"Power":85000,"Money":0,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":9}],"Clout":72000,"SoldierNum":2700,"Item":[],"Metal":46800},{"Wood":78000,"Power":102000,"Money":0,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":9}],"Clout":84000,"SoldierNum":3150,"Item":[],"Metal":78000},{"Wood":117000,"Power":119000,"Money":234000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":10}],"Clout":96000,"SoldierNum":3600,"Item":[],"Metal":117000},{"Wood":240000,"Power":136000,"Money":490000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":10}],"Clout":120000,"SoldierNum":4050,"Item":[],"Metal":240000},{"Wood":370000,"Power":153000,"Money":730000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":11}],"Clout":144000,"SoldierNum":4500,"Item":[],"Metal":370000},{"Wood":500000,"Power":170000,"Money":970000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":11}],"Clout":168000,"SoldierNum":4950,"Item":[],"Metal":490000},{"Wood":630000,"Power":187000,"Money":1260000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":12}],"Clout":204000,"SoldierNum":5400,"Item":[],"Metal":630000},{"Wood":770000,"Power":204000,"Money":1540000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":13}],"Clout":240000,"SoldierNum":5850,"Item":[],"Metal":770000},{"Wood":910000,"Power":221000,"Money":1820000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":14}],"Clout":276000,"SoldierNum":6300,"Item":[],"Metal":910000},{"Wood":1240000,"Power":238000,"Money":2500000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":15}],"Clout":324000,"SoldierNum":6750,"Item":[],"Metal":1240000},{"Wood":1580000,"Power":255000,"Money":3200000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":16}],"Clout":372000,"SoldierNum":7200,"Item":[],"Metal":1580000},{"Wood":1920000,"Power":272000,"Money":3900000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":17}],"Clout":420000,"SoldierNum":7650,"Item":[],"Metal":1920000},{"Wood":3800000,"Power":300000,"Money":7700000,"CloutLimit":0,"Time":0,"UpgradeLimit":[{"bid":12,"lev":1},{"bid":14,"lev":1},{"bid":1,"lev":18}],"Clout":480000,"SoldierNum":8100,"Item":[],"Metal":3800000}],"name":"軍事府","bid":55,"maxLev":18,"buildType":39},"10":{"initLev":0,"levels":[{"Wood":0,"Power":0,"Money":0,"TotalCapacity":1000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[],"Clout":0,"Metal":0},{"Wood":100,"Power":100,"Money":0,"TotalCapacity":1500000,"Time":1,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":500,"Metal":0},{"Wood":400,"Power":720,"Money":0,"TotalCapacity":2000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":1000,"Metal":0},{"Wood":700,"Power":1440,"Money":0,"TotalCapacity":2500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":1500,"Metal":0},{"Wood":1000,"Power":2160,"Money":0,"TotalCapacity":3000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":2000,"Metal":0},{"Wood":1300,"Power":2880,"Money":0,"TotalCapacity":3500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":2500,"Metal":0},{"Wood":2340,"Power":3600,"Money":0,"TotalCapacity":4000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":6}],"Clout":3000,"Metal":1560},{"Wood":3900,"Power":4320,"Money":0,"TotalCapacity":4500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":7}],"Clout":3500,"Metal":2600},{"Wood":8125,"Power":5040,"Money":8125,"TotalCapacity":5000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":8}],"Clout":4000,"Metal":3250},{"Wood":17500,"Power":5760,"Money":17500,"TotalCapacity":5500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":9}],"Clout":5000,"Metal":7000},{"Wood":25000,"Power":6480,"Money":25000,"TotalCapacity":6000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":10}],"Clout":6000,"Metal":10000},{"Wood":32500,"Power":7200,"Money":32500,"TotalCapacity":6500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":11}],"Clout":7000,"Metal":13000},{"Wood":41250,"Power":7920,"Money":41250,"TotalCapacity":7000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":12}],"Clout":8500,"Metal":16500},{"Wood":50000,"Power":8640,"Money":50000,"TotalCapacity":7500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":13}],"Clout":10000,"Metal":20000},{"Wood":58750,"Power":9360,"Money":58750,"TotalCapacity":8000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":14}],"Clout":11500,"Metal":23500},{"Wood":78750,"Power":10080,"Money":78750,"TotalCapacity":8500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":15}],"Clout":13500,"Metal":31500},{"Wood":100000,"Power":10800,"Money":100000,"TotalCapacity":9000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":16}],"Clout":15500,"Metal":40000},{"Wood":121250,"Power":11520,"Money":121250,"TotalCapacity":9500000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":17}],"Clout":17500,"Metal":48500},{"Wood":145500,"Power":12500,"Money":145500,"TotalCapacity":10000000,"Time":0,"CloutLimit":0,"Item":[],"UpgradeLimit":[{"bid":1,"lev":18}],"Clout":20000,"Metal":58200}],"name":"石料庫","bid":10,"maxLev":18,"buildType":10}}}</script>
+<script id="res-glyph-data" type="application/json">{"gw":12,"gh":18,"ss":3,"glyphs":{".":{"a":0.944,"h":0.103,"y":0.839,"v":[0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.833,0.833,0.833,0.833,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667],"n":6},"/":{"a":0.35,"h":0.833,"y":0.458,"v":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,0.778,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,0.556,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.778,0.333,0.111,0.0,0.0,0.0,0.0,0.0,0.0,0.667,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.111,0.333,0.778,1.0,0.667,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,0.778,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,0.556,1.0,0.444,0.167,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.833,0.889,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"n":2},"0":{"a":0.714,"h":0.769,"y":0.503,"v":[0.0,0.0,0.083,0.292,0.583,1.0,0.875,0.583,0.292,0.042,0.0,0.0,0.0,0.056,0.528,1.0,0.958,0.792,0.625,0.875,0.931,0.514,0.0,0.0,0.0,0.125,1.0,0.917,0.514,0.208,0.208,0.375,0.792,0.861,0.181,0.0,0.0,0.694,0.931,0.514,0.056,0.0,0.0,0.167,0.458,0.847,0.861,0.0,0.208,1.0,0.792,0.125,0.0,0.0,0.0,0.042,0.208,0.792,0.972,0.208,0.542,1.0,0.764,0.097,0.0,0.0,0.0,0.0,0.125,0.792,1.0,0.667,0.75,1.0,0.681,0.014,0.0,0.0,0.0,0.0,0.125,0.708,1.0,0.833,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.125,0.542,1.0,0.917,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.125,0.625,1.0,1.0,1.0,1.0,0.583,0.0,0.0,0.0,0.0,0.0,0.125,0.569,1.0,1.0,1.0,1.0,0.583,0.0,0.0,0.0,0.0,0.0,0.125,0.597,1.0,1.0,0.75,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.125,0.625,1.0,0.792,0.458,1.0,0.736,0.069,0.0,0.0,0.0,0.014,0.153,0.792,1.0,0.542,0.125,1.0,0.889,0.319,0.0,0.0,0.0,0.097,0.431,0.847,1.0,0.167,0.0,0.917,1.0,0.764,0.306,0.167,0.167,0.292,0.819,1.0,0.889,0.0,0.0,0.153,1.0,1.0,0.917,0.75,0.75,0.917,1.0,0.861,0.056,0.0,0.0,0.056,0.444,1.0,1.0,1.0,1.0,1.0,0.931,0.431,0.0,0.0,0.0,0.0,0.0,0.167,0.417,0.833,0.833,0.417,0.167,0.0,0.0,0.0],"n":8},"1":{"a":0.265,"h":0.769,"y":0.47,"v":[0.0,0.0,0.222,0.333,0.556,1.0,1.0,0.852,0.778,0.667,0.444,0.444,0.593,0.593,0.864,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.63,0.63,0.704,0.741,0.827,1.0,1.0,1.0,1.0,0.852,0.556,0.556,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.765,0.296,0.296,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.741,0.222,0.222,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.716,0.148,0.148,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.704,0.111,0.111,0.0,0.0,0.37,0.556,0.704,1.0,1.0,1.0,1.0,0.704,0.111,0.111,0.0,0.0,0.222,0.333,0.481,0.778,0.778,0.926,1.0,0.667,0.0,0.0],"n":9},"2":{"a":0.705,"h":0.766,"y":0.512,"v":[0.0,0.0,0.067,0.2,0.467,1.0,1.0,0.733,0.533,0.133,0.0,0.0,0.0,0.0,0.422,0.956,1.0,0.933,0.933,1.0,1.0,0.733,0.178,0.0,0.0,0.289,0.911,0.933,0.622,0.133,0.133,0.467,0.889,1.0,0.6,0.0,0.0,0.822,0.889,0.533,0.111,0.0,0.0,0.0,0.533,1.0,1.0,0.067,0.333,1.0,0.711,0.178,0.022,0.0,0.0,0.0,0.533,1.0,1.0,0.333,0.467,0.644,0.289,0.067,0.0,0.0,0.0,0.0,0.533,1.0,1.0,0.2,0.0,0.156,0.044,0.0,0.0,0.0,0.0,0.156,0.711,1.0,0.933,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.578,1.0,1.0,0.4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.089,0.844,1.0,0.911,0.133,0.0,0.0,0.0,0.0,0.0,0.0,0.044,0.778,1.0,1.0,0.378,0.022,0.0,0.0,0.0,0.0,0.0,0.0,0.511,0.978,0.978,0.533,0.067,0.0,0.0,0.0,0.0,0.0,0.0,0.289,0.911,0.911,0.489,0.089,0.0,0.0,0.0,0.0,0.0,0.0,0.289,0.844,0.956,0.533,0.067,0.0,0.0,0.0,0.0,0.0,0.044,0.333,0.867,0.911,0.511,0.089,0.0,0.0,0.0,0.0,0.0,0.0,0.333,0.867,0.844,0.489,0.2,0.133,0.178,0.222,0.133,0.133,0.133,0.933,1.0,1.0,0.933,0.867,1.0,0.867,0.933,1.0,0.867,0.8,0.4,0.867,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.6,1.0,0.933,0.8,0.8,0.733,0.733,0.8,0.8,0.8,0.8,0.2],"n":5},"3":{"a":0.618,"h":0.774,"y":0.505,"v":[0.0,0.0,0.0,0.286,0.524,0.667,0.905,0.762,0.524,0.286,0.0,0.0,0.0,0.0,0.492,0.794,0.825,0.81,0.81,0.968,1.0,1.0,0.667,0.0,0.0,0.619,0.841,0.825,0.476,0.19,0.19,0.222,0.698,1.0,1.0,0.333,0.333,0.762,0.921,0.429,0.127,0.0,0.0,0.0,0.254,0.841,1.0,0.667,0.238,0.619,0.556,0.206,0.0,0.0,0.0,0.0,0.095,0.714,1.0,0.81,0.0,0.095,0.095,0.063,0.0,0.0,0.0,0.048,0.508,0.873,0.952,0.524,0.0,0.0,0.0,0.0,0.0,0.048,0.143,0.413,0.873,0.952,0.857,0.238,0.0,0.0,0.095,0.143,0.175,0.413,0.762,0.873,0.952,0.841,0.524,0.0,0.0,0.0,0.556,0.905,0.968,1.0,1.0,1.0,0.841,0.397,0.0,0.0,0.0,0.0,0.46,0.81,0.81,0.81,0.841,0.905,0.984,0.81,0.381,0.0,0.0,0.0,0.048,0.095,0.095,0.095,0.111,0.27,0.698,0.968,1.0,0.524,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.238,0.81,1.0,0.952,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.714,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.222,0.778,1.0,0.905,0.19,0.19,0.0,0.0,0.0,0.0,0.0,0.159,0.714,0.937,1.0,0.857,0.762,0.81,0.714,0.714,0.714,0.714,0.714,0.841,1.0,1.0,0.857,0.429,0.714,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.825,0.429,0.0,0.143,0.429,0.714,0.952,1.0,0.905,0.714,0.714,0.571,0.19,0.0,0.0],"n":7},"4":{"a":0.694,"h":0.766,"y":0.502,"v":[0.0,0.0,0.0,0.0,0.0,0.0,0.222,0.889,0.926,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.704,0.963,1.0,0.704,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.235,0.938,1.0,1.0,0.704,0.0,0.0,0.0,0.0,0.0,0.0,0.037,0.63,0.926,0.963,1.0,0.778,0.0,0.0,0.0,0.0,0.0,0.0,0.309,0.926,0.679,0.84,1.0,0.778,0.0,0.0,0.0,0.0,0.0,0.062,0.568,0.963,0.358,0.79,1.0,0.778,0.0,0.0,0.0,0.0,0.0,0.321,0.901,0.778,0.037,0.778,1.0,0.778,0.0,0.0,0.0,0.0,0.123,0.63,0.951,0.42,0.0,0.778,1.0,0.778,0.0,0.0,0.0,0.0,0.383,0.914,0.531,0.0,0.0,0.778,1.0,0.778,0.0,0.0,0.0,0.099,0.951,0.827,0.21,0.0,0.0,0.778,1.0,0.778,0.0,0.0,0.0,0.469,0.914,0.407,0.012,0.0,0.0,0.778,1.0,0.827,0.049,0.0,0.407,0.963,0.778,0.198,0.136,0.309,0.407,0.864,1.0,0.975,0.506,0.407,0.963,1.0,0.938,0.815,0.827,0.914,0.963,0.988,1.0,1.0,0.963,0.963,1.0,1.0,1.0,1.0,1.0,0.852,0.926,1.0,1.0,1.0,1.0,0.778,0.296,0.704,0.531,0.432,0.37,0.222,0.259,0.84,1.0,0.852,0.457,0.296,0.0,0.037,0.0,0.0,0.0,0.0,0.049,0.802,1.0,0.704,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.074,0.815,1.0,0.63,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.593,0.926,0.481,0.0,0.0],"n":9},"5":{"a":0.624,"h":0.772,"y":0.493,"v":[0.0,0.462,0.462,0.462,0.385,0.513,0.538,0.538,0.59,1.0,0.923,0.077,0.0,0.974,1.0,1.0,1.0,1.0,1.0,0.974,0.974,0.974,0.897,0.282,0.0,0.923,1.0,0.949,0.248,0.154,0.154,0.103,0.103,0.103,0.103,0.051,0.0,0.897,1.0,0.846,0.051,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.872,1.0,0.726,0.017,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.923,1.0,0.513,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.051,0.974,0.983,0.299,0.0,0.077,0.128,0.103,0.051,0.0,0.0,0.0,0.205,1.0,0.966,0.53,0.41,0.564,0.667,0.615,0.513,0.214,0.026,0.0,0.538,1.0,1.0,1.0,0.88,0.872,0.846,0.88,1.0,0.778,0.462,0.0,0.256,0.795,0.761,0.538,0.265,0.128,0.103,0.188,0.709,1.0,1.0,0.308,0.0,0.154,0.222,0.026,0.0,0.0,0.0,0.0,0.179,1.0,1.0,0.564,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.06,0.966,1.0,0.897,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.068,0.983,1.0,0.897,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.282,1.0,1.0,0.641,0.205,0.103,0.085,0.051,0.051,0.051,0.085,0.274,0.744,1.0,1.0,0.333,0.795,0.667,0.607,0.564,0.564,0.615,0.658,1.0,1.0,1.0,0.718,0.026,0.513,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.658,0.051,0.0,0.0,0.462,0.692,0.923,0.923,1.0,0.923,0.59,0.41,0.0,0.0,0.0],"n":13},"6":{"a":0.613,"h":0.775,"y":0.502,"v":[0.0,0.0,0.0,0.306,0.861,0.917,1.0,0.917,0.861,0.639,0.0,0.0,0.0,0.111,0.556,1.0,0.944,0.778,0.361,0.833,1.0,1.0,0.889,0.0,0.0,0.417,1.0,0.944,0.167,0.0,0.0,0.056,0.306,1.0,1.0,0.389,0.194,0.944,0.981,0.574,0.0,0.0,0.0,0.0,0.13,0.722,0.889,0.556,0.417,1.0,0.907,0.037,0.0,0.0,0.0,0.0,0.0,0.259,0.389,0.0,0.444,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.028,0.0,0.0,0.611,1.0,0.833,0.0,0.074,0.278,0.278,0.222,0.222,0.019,0.0,0.0,0.833,1.0,0.889,0.389,0.537,0.861,0.861,0.833,0.833,0.407,0.139,0.0,0.944,1.0,0.981,0.972,0.787,0.759,0.75,0.769,0.954,0.963,0.722,0.0,0.944,1.0,0.87,0.333,0.065,0.037,0.028,0.046,0.426,1.0,1.0,0.5,0.917,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.111,0.833,1.0,0.972,0.833,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.5,1.0,1.0,0.528,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.583,1.0,1.0,0.417,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.093,0.88,1.0,0.944,0.306,1.0,0.944,0.5,0.0,0.0,0.0,0.056,0.324,0.981,1.0,0.417,0.0,0.444,1.0,1.0,0.833,0.444,0.361,0.861,1.0,1.0,0.944,0.0,0.0,0.278,0.75,1.0,1.0,1.0,1.0,1.0,1.0,0.917,0.194,0.0,0.0,0.0,0.083,0.194,0.806,1.0,0.806,0.667,0.194,0.0,0.0,0.0],"n":12},"7":{"a":0.655,"h":0.773,"y":0.507,"v":[0.0,0.333,0.333,0.333,0.333,0.333,0.889,1.0,1.0,1.0,0.667,0.0,0.889,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.222,0.222,0.222,0.222,0.222,0.222,0.222,0.852,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.407,0.926,1.0,0.556,0.222,0.0,0.0,0.0,0.0,0.0,0.0,0.185,0.815,1.0,0.815,0.111,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.704,0.963,1.0,0.444,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.037,0.815,1.0,0.815,0.259,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.296,0.963,1.0,0.444,0.111,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.556,1.0,0.889,0.222,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.296,0.704,1.0,0.519,0.148,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.556,1.0,0.778,0.37,0.074,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.556,1.0,0.519,0.148,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,0.778,1.0,0.444,0.111,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.556,1.0,1.0,0.296,0.037,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.556,1.0,0.778,0.222,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.185,0.926,1.0,0.556,0.111,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.556,1.0,1.0,0.556,0.111,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.444,0.778,1.0,0.444,0.0,0.0,0.0,0.0,0.0,0.0],"n":3},"8":{"a":0.645,"h":0.792,"y":0.5,"v":[0.0,0.0,0.0,0.5,0.583,1.0,1.0,0.833,0.5,0.0,0.0,0.0,0.0,0.0,1.0,1.0,0.75,0.5,0.5,0.5,1.0,0.833,0.5,0.0,0.0,1.0,1.0,0.417,0.0,0.0,0.0,0.0,0.417,1.0,0.75,0.5,0.333,1.0,0.917,0.0,0.0,0.0,0.0,0.0,0.111,0.806,1.0,0.75,0.5,1.0,0.917,0.0,0.0,0.0,0.0,0.0,0.0,0.583,1.0,0.75,0.333,1.0,0.917,0.083,0.0,0.0,0.0,0.0,0.306,0.944,1.0,0.583,0.0,0.833,0.944,0.472,0.167,0.0,0.222,0.333,0.944,1.0,0.75,0.167,0.0,0.333,0.833,0.944,0.667,0.333,0.778,1.0,1.0,0.694,0.167,0.0,0.0,0.0,0.444,1.0,1.0,1.0,1.0,1.0,0.944,0.222,0.0,0.0,0.0,0.333,0.778,1.0,0.611,0.333,0.444,0.667,0.944,0.833,0.333,0.0,0.333,0.833,1.0,0.611,0.139,0.0,0.056,0.167,0.611,1.0,0.833,0.5,0.833,1.0,0.944,0.139,0.0,0.0,0.0,0.0,0.25,0.833,1.0,0.75,1.0,1.0,0.417,0.0,0.0,0.0,0.0,0.0,0.056,0.361,1.0,0.917,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,1.0,1.0,0.917,0.0,0.0,0.0,0.0,0.0,0.111,0.972,1.0,0.833,0.5,1.0,1.0,0.917,0.5,0.0,0.0,0.667,1.0,1.0,1.0,0.25,0.0,0.75,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.25,0.0,0.0,0.0,0.083,0.5,0.5,1.0,1.0,0.5,0.333,0.25,0.0,0.0],"n":4},"9":{"a":0.632,"h":0.781,"y":0.514,"v":[0.0,0.0,0.667,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.667,0.333,0.333,0.667,1.0,1.0,0.0,0.0,0.333,1.0,1.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.0,1.0,1.0,0.778,0.0,0.0,0.0,0.0,0.0,0.222,1.0,1.0,0.222,1.0,1.0,0.222,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,0.778,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,0.222,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.778,1.0,0.778,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,0.222,1.0,1.0,0.333,0.333,0.333,0.333,0.333,1.0,1.0,1.0,1.0,0.0,0.333,0.556,1.0,1.0,1.0,1.0,1.0,0.333,1.0,1.0,1.0,0.0,0.0,0.111,0.333,0.333,0.333,0.333,0.333,0.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,0.778,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.222,1.0,1.0,0.444,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.778,1.0,1.0,0.111,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,1.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.333,0.667,1.0,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0],"n":3},"\u842c":{"a":0.813,"h":1.0,"y":0.5,"v":[0.0,0.0,0.0,0.389,0.222,0.0,0.0,0.583,0.542,0.014,0.083,0.069,0.0,0.0,0.0,0.917,0.694,0.194,0.306,0.778,0.847,0.542,0.667,0.597,0.375,0.583,0.583,0.972,0.944,0.833,0.861,0.917,0.764,0.639,0.667,0.694,0.611,0.708,0.625,0.764,0.708,0.292,0.458,0.833,0.139,0.083,0.083,0.083,0.014,0.028,0.0,0.25,0.5,0.097,0.653,0.889,0.389,0.028,0.0,0.0,0.0,0.028,0.5,0.583,0.778,0.931,0.833,0.625,0.889,0.542,0.0,0.0,0.0,0.0,0.625,0.694,0.292,0.917,0.653,0.181,0.958,0.431,0.0,0.0,0.0,0.0,0.292,0.833,0.556,0.917,0.736,0.708,0.958,0.014,0.0,0.0,0.0,0.0,0.139,0.917,0.292,0.875,0.625,0.639,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.889,0.819,0.958,0.653,0.597,0.597,0.097,0.069,0.0,0.0,0.0,0.0,0.319,0.181,0.875,0.486,0.569,0.806,0.806,0.778,0.431,0.208,0.639,0.583,0.861,0.764,0.958,0.708,0.653,0.472,0.597,0.903,0.667,0.292,0.931,0.667,0.333,0.208,0.875,0.375,0.514,0.111,0.208,0.833,0.444,0.167,0.875,0.25,0.028,0.167,0.875,0.875,0.917,0.736,0.208,0.833,0.417,0.236,0.875,0.25,0.722,0.917,0.833,0.542,0.375,0.694,0.208,0.833,0.417,0.319,0.958,0.25,0.389,0.458,0.083,0.0,0.0,0.111,0.417,0.903,0.417,0.264,0.958,0.25,0.0,0.0,0.0,0.0,0.0,0.153,0.819,1.0,0.5,0.042,0.403,0.083,0.0,0.0,0.0,0.0,0.0,0.014,0.264,0.667,0.444],"n":8}}}</script>
+<script id="glyph-data" type="application/json">{"gw":12,"gh":18,"ss":3,"glyphs":{"/":{"v":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.135,0.438,0.823,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.271,0.844,0.792,0.75,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.094,0.406,1.0,0.521,0.281,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.458,0.656,0.969,0.354,0.062,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.833,0.823,0.688,0.219,0.0,0.0,0.0,0.0,0.0,0.0,0.062,0.125,0.969,0.771,0.344,0.104,0.0,0.0,0.0,0.0,0.0,0.0,0.406,0.469,1.0,0.698,0.125,0.042,0.0,0.0,0.0,0.0,0.0,0.0,0.781,0.844,0.729,0.458,0.0,0.0,0.0,0.0,0.0,0.0,0.042,0.083,0.938,0.969,0.51,0.312,0.0,0.0,0.0,0.0,0.0,0.0,0.271,0.458,1.0,1.0,0.073,0.021,0.0,0.0,0.0,0.0,0.0,0.0,0.562,0.896,0.781,0.719,0.0,0.0,0.0,0.0,0.0,0.0,0.01,0.031,0.667,1.0,0.594,0.531,0.0,0.0,0.0,0.0,0.0,0.0,0.125,0.406,0.812,0.969,0.156,0.125,0.0,0.0,0.0,0.0,0.0,0.0,0.24,0.75,0.781,0.729,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.062,0.375,0.969,0.635,0.417,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.375,0.594,1.0,0.458,0.135,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.812,0.854,0.875,0.281,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.812,0.406,0.125,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"a":0.389,"n":32},"0":{"v":[0.0,0.0,0.133,0.6,0.9,1.0,0.9,0.9,0.433,0.0,0.0,0.0,0.0,0.2,0.9,1.0,0.567,0.1,0.1,0.367,1.0,0.733,0.0,0.0,0.067,0.533,1.0,0.711,0.156,0.0,0.0,0.089,0.711,0.944,0.467,0.0,0.3,0.9,0.844,0.389,0.0,0.0,0.0,0.0,0.433,1.0,0.767,0.0,0.4,1.0,0.7,0.1,0.0,0.0,0.0,0.0,0.167,0.867,0.933,0.267,0.6,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.056,0.778,1.0,0.567,0.933,1.0,0.567,0.0,0.0,0.0,0.0,0.0,0.022,0.711,1.0,0.833,1.0,1.0,0.467,0.0,0.0,0.0,0.0,0.0,0.0,0.6,1.0,0.9,1.0,1.0,0.467,0.0,0.0,0.0,0.0,0.0,0.0,0.567,1.0,1.0,1.0,1.0,0.467,0.0,0.0,0.0,0.0,0.0,0.0,0.6,1.0,1.0,1.0,1.0,0.567,0.0,0.0,0.0,0.0,0.0,0.033,0.733,1.0,0.8,0.8,1.0,0.6,0.0,0.0,0.0,0.0,0.0,0.056,0.778,1.0,0.8,0.533,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.2,0.933,1.0,0.5,0.333,1.0,0.889,0.278,0.0,0.0,0.0,0.0,0.433,1.0,1.0,0.1,0.2,0.867,1.0,0.644,0.267,0.078,0.111,0.3,0.711,1.0,0.833,0.0,0.0,0.4,0.911,1.0,0.867,0.456,0.556,0.933,1.0,0.911,0.333,0.0,0.0,0.0,0.733,1.0,1.0,1.0,1.0,1.0,1.0,0.633,0.0,0.0,0.0,0.0,0.0,0.2,0.833,1.0,1.0,0.733,0.1,0.0,0.0,0.0],"a":0.733,"n":10},"1":{"v":[0.025,0.025,0.025,0.525,0.75,0.75,1.0,1.0,1.0,0.7,0.7,0.7,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.95,0.95,0.95,0.1,0.1,0.1,0.575,0.75,0.75,1.0,1.0,1.0,0.725,0.725,0.725,0.033,0.033,0.033,0.258,0.483,0.483,1.0,1.0,1.0,0.708,0.708,0.708,0.0,0.0,0.0,0.067,0.317,0.317,1.0,1.0,1.0,0.7,0.7,0.7,0.0,0.0,0.0,0.05,0.3,0.3,1.0,1.0,1.0,0.733,0.733,0.733,0.0,0.0,0.0,0.15,0.4,0.4,1.0,1.0,1.0,0.717,0.717,0.717,0.0,0.0,0.0,0.183,0.433,0.433,1.0,1.0,1.0,0.7,0.7,0.7,0.0,0.0,0.0,0.192,0.425,0.425,0.983,0.983,1.0,0.733,0.733,0.733,0.0,0.0,0.0,0.208,0.442,0.442,0.983,0.983,1.0,0.725,0.725,0.725,0.0,0.0,0.0,0.192,0.442,0.442,1.0,1.0,1.0,0.683,0.683,0.683,0.0,0.0,0.0,0.175,0.425,0.425,1.0,1.0,1.0,0.692,0.692,0.692,0.0,0.0,0.0,0.317,0.567,0.567,1.0,1.0,1.0,0.675,0.675,0.675,0.0,0.0,0.0,0.417,0.667,0.667,1.0,1.0,1.0,0.658,0.658,0.658,0.0,0.0,0.0,0.483,0.733,0.733,1.0,1.0,1.0,0.617,0.617,0.617,0.0,0.0,0.0,0.55,0.8,0.8,1.0,1.0,1.0,0.6,0.6,0.6,0.0,0.0,0.0,0.6,0.85,0.85,1.0,1.0,1.0,0.625,0.625,0.625,0.0,0.0,0.0,0.35,0.6,0.6,0.975,0.975,0.95,0.375,0.375,0.375],"a":0.221,"n":40},"2":{"v":[0.0,0.0,0.0,0.5,1.0,1.0,1.0,1.0,0.5,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.5,0.5,1.0,1.0,1.0,0.0,0.0,0.0,0.5,1.0,0.5,0.167,0.167,0.167,0.167,1.0,1.0,0.333,0.0,0.0,0.833,0.667,0.167,0.0,0.0,0.0,0.0,1.0,1.0,0.833,0.0,0.333,1.0,0.167,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.0,0.167,0.5,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.167,0.5,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.167,0.5,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.5,0.833,0.833,0.167,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.167,0.667,0.833,0.167,0.0,0.0,0.0,0.0,0.0,0.0,0.167,0.167,0.667,0.5,0.167,0.0,0.0,0.0,0.0,0.0,0.0,0.167,0.5,0.667,0.667,0.667,0.167,0.167,0.167,0.167,0.167,0.167,0.0,0.667,0.667,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.667,0.667,0.167,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.5,1.0,1.0,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],"a":0.728,"n":2},"3":{"v":[0.0,0.0,0.333,0.833,1.0,1.0,1.0,1.0,1.0,0.833,0.333,0.0,0.0,0.333,0.833,0.833,0.167,0.0,0.0,0.0,0.5,1.0,1.0,0.5,0.0,0.667,0.944,0.611,0.056,0.0,0.0,0.0,0.278,0.778,1.0,0.5,0.0,0.833,0.556,0.167,0.0,0.0,0.0,0.0,0.167,0.667,1.0,0.5,0.0,0.278,0.111,0.0,0.0,0.0,0.0,0.0,0.167,0.667,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.278,0.778,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.056,0.278,0.667,0.944,0.778,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.167,0.833,1.0,0.833,0.333,0.0,0.0,0.0,0.333,0.833,1.0,1.0,1.0,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.333,0.833,0.667,0.833,1.0,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.5,1.0,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.167,0.556,1.0,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.111,0.556,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.278,0.778,1.0,0.5,0.333,0.333,0.333,0.333,0.167,0.111,0.333,0.333,0.667,1.0,0.944,0.333,1.0,1.0,1.0,1.0,0.5,0.333,1.0,1.0,1.0,1.0,0.833,0.0,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.833,0.333,0.0],"a":0.656,"n":2},"4":{"v":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.444,0.556,0.556,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,0.667,0.333,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.444,0.444,0.222,0.333,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.667,0.333,0.0,0.333,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.444,0.444,0.111,0.0,0.333,1.0,0.667,0.0,0.0,0.0,0.0,0.444,0.889,0.333,0.0,0.0,0.333,1.0,0.667,0.0,0.0,0.0,0.0,0.667,0.778,0.222,0.0,0.0,0.333,1.0,0.667,0.0,0.0,0.0,0.333,0.556,0.222,0.0,0.0,0.0,0.333,1.0,0.667,0.0,0.0,0.0,1.0,0.333,0.0,0.0,0.0,0.0,0.333,1.0,0.667,0.0,0.0,0.333,1.0,0.556,0.333,0.333,0.333,0.333,0.556,1.0,0.778,0.333,0.333,1.0,1.0,1.0,1.0,1.0,0.778,0.667,0.778,1.0,1.0,1.0,1.0,0.667,0.667,0.667,0.667,0.667,0.222,0.0,0.333,1.0,0.889,0.667,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,0.667,0.0,0.0],"a":0.647,"n":1},"5":{"v":[0.0,0.292,0.375,0.375,0.375,0.375,0.375,0.375,0.583,0.792,0.708,0.25,0.125,0.667,0.958,0.833,0.625,0.625,0.625,0.625,0.625,0.625,0.625,0.625,0.0,0.625,0.792,0.5,0.042,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.625,0.736,0.389,0.014,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.625,0.708,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.125,0.667,0.653,0.278,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,0.819,0.542,0.153,0.056,0.125,0.125,0.097,0.042,0.0,0.0,0.0,0.458,0.903,0.417,0.069,0.361,0.708,0.792,0.708,0.347,0.056,0.0,0.0,0.833,0.986,0.889,0.792,0.542,0.292,0.333,0.778,0.903,0.778,0.472,0.0,0.5,0.875,0.625,0.403,0.194,0.0,0.083,0.278,0.639,0.889,0.806,0.167,0.083,0.25,0.167,0.028,0.0,0.0,0.0,0.0,0.264,0.667,0.903,0.458,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.097,0.472,0.972,0.708,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.069,0.444,0.986,0.833,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.222,0.611,0.958,0.708,0.042,0.0,0.0,0.0,0.0,0.0,0.0,0.111,0.514,0.833,0.903,0.458,0.25,0.125,0.125,0.125,0.125,0.125,0.125,0.417,0.889,0.986,0.736,0.083,0.875,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.792,0.25,0.0,0.625,0.958,1.0,1.0,1.0,1.0,1.0,1.0,0.5,0.083,0.0,0.0],"a":0.617,"n":8},"6":{"v":[0.0,0.0,0.167,0.25,0.333,0.5,1.0,0.833,0.417,0.167,0.0,0.0,0.0,0.167,0.25,0.417,0.75,0.75,0.5,0.667,0.917,1.0,0.667,0.0,0.0,0.167,0.583,0.75,0.5,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.167,0.556,0.75,0.583,0.167,0.0,0.0,0.0,0.0,0.333,0.944,0.833,0.25,0.75,0.833,0.5,0.0,0.0,0.0,0.0,0.0,0.111,0.306,0.25,0.417,0.806,0.5,0.167,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.833,0.944,0.333,0.0,0.056,0.167,0.167,0.167,0.056,0.0,0.0,0.0,1.0,1.0,0.444,0.167,0.361,0.75,0.75,0.75,0.694,0.5,0.111,0.0,1.0,1.0,0.722,0.583,0.611,0.667,0.5,0.5,0.833,0.917,0.611,0.333,1.0,0.944,0.75,0.611,0.444,0.333,0.167,0.167,0.5,0.778,0.889,0.667,1.0,0.833,0.472,0.222,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,0.889,0.278,0.0,0.0,0.0,0.0,0.0,0.0,0.278,0.889,1.0,0.833,0.944,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.139,0.611,1.0,0.417,0.806,0.389,0.056,0.0,0.0,0.0,0.0,0.056,0.222,0.639,0.917,0.167,0.722,0.667,0.361,0.056,0.0,0.0,0.056,0.194,0.5,0.917,0.75,0.0,0.667,1.0,0.75,0.167,0.0,0.0,0.167,0.25,0.5,0.917,0.75,0.0,0.5,0.917,1.0,0.833,0.5,0.25,0.75,1.0,0.917,0.5,0.0,0.0,0.0,0.333,0.583,0.833,1.0,0.75,0.75,0.75,0.667,0.333,0.0],"a":0.588,"n":4},"7":{"v":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,0.778,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.222,0.778,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.222,0.778,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,0.889,0.444,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.222,0.556,0.889,0.444,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.444,0.889,0.556,0.222,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0],"a":0.688,"n":1},"8":{"v":[0.0,0.0,0.219,0.594,0.667,0.792,0.823,0.698,0.625,0.365,0.062,0.0,0.0,0.344,0.812,0.896,0.448,0.26,0.188,0.354,0.677,0.833,0.5,0.0,0.0,0.76,0.965,0.472,0.035,0.0,0.0,0.0,0.278,0.889,0.896,0.188,0.156,0.958,0.826,0.16,0.003,0.0,0.0,0.0,0.087,0.715,0.99,0.26,0.26,1.0,0.771,0.094,0.0,0.0,0.0,0.0,0.049,0.628,1.0,0.479,0.24,0.958,0.799,0.167,0.003,0.0,0.0,0.038,0.267,0.819,1.0,0.635,0.073,0.688,0.913,0.549,0.194,0.028,0.094,0.358,0.844,0.861,0.771,0.156,0.0,0.198,0.781,0.958,0.781,0.167,0.476,0.927,0.938,0.361,0.094,0.0,0.0,0.01,0.062,0.649,0.993,0.938,0.972,0.962,0.441,0.014,0.0,0.0,0.0,0.01,0.427,0.91,0.865,0.306,0.264,0.764,0.823,0.583,0.104,0.0,0.042,0.719,0.917,0.639,0.125,0.007,0.007,0.128,0.667,0.958,0.812,0.271,0.365,0.969,0.84,0.236,0.007,0.0,0.0,0.007,0.253,0.854,1.0,0.583,0.812,1.0,0.625,0.042,0.0,0.0,0.0,0.0,0.056,0.622,1.0,0.917,0.927,1.0,0.681,0.059,0.0,0.0,0.0,0.0,0.052,0.635,1.0,0.885,0.792,1.0,0.806,0.111,0.0,0.0,0.0,0.003,0.153,0.792,1.0,0.76,0.458,1.0,0.979,0.417,0.184,0.038,0.049,0.226,0.441,0.944,1.0,0.458,0.188,0.969,1.0,1.0,0.74,0.24,0.281,0.792,1.0,0.958,0.906,0.156,0.0,0.156,0.698,0.938,0.958,0.979,0.938,0.938,0.906,0.562,0.031,0.0],"a":0.693,"n":32},"9":{"v":[0.0,0.0,0.0,0.333,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.667,0.0,0.0,1.0,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,0.333,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,1.0,1.0,1.0,0.667,0.0,0.0,0.0,0.667,1.0,1.0,1.0,1.0,0.0,0.667,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.333,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.667,1.0,1.0,0.667,0.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.667,0.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.667,0.0,0.0,0.0,0.0,0.667,1.0,0.667,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"a":0.556,"n":1}}}</script>
+<script>
+(function () {
+  "use strict";
+  const DATA = JSON.parse(document.getElementById("build-data").textContent);
+  const RES = ["Wood", "Metal", "Money"];
+  const RES_NAME = { Wood: "木材", Metal: "石料", Money: "銅錢" };
+  const RES_ICON = { Wood: "木", Metal: "石", Money: "錢" };
+  const CAMPS = [41, 42, 44], ARMY = 55;   // 盾/弓/騎兵營（顯示兵階）、軍事府（顯示帶兵數）
+  const STORE_KEY = "build_sim_state_v2";
+  const MAIN = DATA.mainBid;
+  const builds = {};
+  for (const k in DATA.buildings) builds[+k] = DATA.buildings[k];
+  const bids = Object.keys(builds).map(Number).sort((a, b) => a - b);
+
+  // 與遊戲「建築總覽」相同的排列（階層 = 解鎖所需君主殿等級）
+  const LAYOUT = [
+    { tier: 1, bids: [48, 40, 6, 56] },
+    { tier: 2, bids: [46, 19, 5] },
+    { tier: 4, bids: [41, 42, 44] },
+    { tier: 6, bids: [47, 10, 3] },
+    { tier: 8, bids: [14, 12, 55] },
+  ];
+  const OTHERS = [MAIN].concat(bids.filter(b => b !== MAIN && !LAYOUT.some(r => r.bids.includes(b))));
+
+  const fmt = n => (n || 0).toLocaleString("en-US");
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const $ = id => document.getElementById(id);
+
+  // ---------- 模擬核心 ----------
+  class PlanError extends Error {}
+  const keyLess = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
+  class Sim {
+    constructor(levels, priority) {
+      this.levels = {};
+      for (const bid of bids) this.levels[bid] = builds[bid].initLev;
+      if (levels) for (const k in levels) if (builds[+k]) this.levels[+k] = +levels[k];
+      this.priority = priority || {};
+      this.steps = [];
+    }
+    info(bid, lev) { return builds[bid].levels[lev]; }
+    clout() { let s = 0; for (const bid of bids) s += this.info(bid, this.levels[bid]).Clout || 0; return s; }
+    power() { let s = 0; for (const bid of bids) s += this.info(bid, this.levels[bid]).Power || 0; return s; }
+    check(bid) {
+      const lev = this.levels[bid], b = builds[bid];
+      if (lev >= b.maxLev) return ["已滿級"];
+      const nxt = this.info(bid, lev + 1), reasons = [];
+      for (const r of nxt.UpgradeLimit || [])
+        if ((this.levels[r.bid] || 0) < r.lev) reasons.push(`需 ${builds[r.bid].name} Lv${r.lev}`);
+      if (nxt.CloutLimit && this.clout() < nxt.CloutLimit)
+        reasons.push(`繁榮度 ${fmt(this.clout())}/${fmt(nxt.CloutLimit)}`);
+      return reasons;
+    }
+    cost(bid, lev) { const i = this.info(bid, lev); return { Wood: i.Wood || 0, Metal: i.Metal || 0, Money: i.Money || 0 }; }
+    upgrade(bid, reason) {
+      const p = this.check(bid);
+      if (p.length) throw new PlanError(`${builds[bid].name} 無法升級：${p.join("、")}`);
+      const lev = ++this.levels[bid];
+      this.steps.push({ bid, name: builds[bid].name, lev, cost: this.cost(bid, lev), clout: this.clout(), reason });
+    }
+    // 補繁榮度：目前可升的建築中，依 優先權重高 > 等級低 > 升級後最貼近目標 > 每單位資源繁榮度高 > bid 小 挑選
+    // 「最貼近目標」：能一次補足缺口者中超出最少的優先；都補不足時取增量最大者（離目標最近）
+    boostClout(target) {
+      const deficit = target - this.clout();
+      let best = null, bestKey = null;
+      for (const bid of bids) {
+        if (bid === MAIN || this.check(bid).length) continue;
+        const lev = this.levels[bid];
+        const gain = (this.info(bid, lev + 1).Clout || 0) - (this.info(bid, lev).Clout || 0);
+        if (gain <= 0) continue;
+        const c = this.cost(bid, lev + 1), w = c.Wood + c.Metal + c.Money;
+        const fit = gain >= deficit ? gain - deficit : Number.MAX_SAFE_INTEGER - gain;
+        const key = [-(this.priority[bid] || 0), lev, fit, -(w === 0 ? Infinity : gain / w), bid];
+        if (!bestKey || keyLess(key, bestKey)) { best = bid; bestKey = key; }
+      }
+      if (best === null) throw new PlanError(`沒有可升級的建築能再提高繁榮度（目前 ${fmt(this.clout())}）`);
+      this.upgrade(best, "補繁榮度");
+    }
+    reach(bid, target, reason = "目標") {
+      target = Math.min(target, builds[bid].maxLev);
+      while (this.levels[bid] < target) {
+        const nxt = this.info(bid, this.levels[bid] + 1);
+        for (const r of nxt.UpgradeLimit || [])
+          if ((this.levels[r.bid] || 0) < r.lev) this.reach(r.bid, r.lev, "前置");
+        while (nxt.CloutLimit && this.clout() < nxt.CloutLimit) this.boostClout(nxt.CloutLimit);
+        this.upgrade(bid, reason);
+      }
+    }
+    totalCost() {
+      const t = { Wood: 0, Metal: 0, Money: 0 };
+      for (const s of this.steps) for (const k of RES) t[k] += s.cost[k];
+      return t;
+    }
+  }
+
+  // ---------- 狀態 ----------
+  // 優先升級列永遠顯示的建築：校場、研學館、盾兵營、弓兵營、騎兵營（本地無資料時預設權重 1）
+  const PINNED_PRIO = [6, 3, 41, 42, 44];
+  let state = { levels: null, stock: { Wood: null, Metal: null, Money: null }, rate: { Wood: null, Metal: null, Money: null },
+    selected: MAIN, priority: null };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (saved && saved.levels) state = Object.assign(state, saved);
+  } catch (e) {}
+  if (!state.priority) state.priority = Object.fromEntries(PINNED_PRIO.map(b => [b, 1]));
+  if (!state.rate) state.rate = { Wood: null, Metal: null, Money: null };
+  if (state.stockAt == null) state.stockAt = Date.now();   // 庫存最後結算時間（每分鐘依每小時產量累加）
+  // 依經過的整分鐘數把產量加進庫存；回傳是否有變動（網頁關閉期間的產出在下次開啟時一次補上）
+  function settleStock(now = Date.now()) {
+    const mins = Math.floor((now - state.stockAt) / 60000);
+    if (mins <= 0) return false;
+    let changed = false;
+    for (const k of RES) {
+      if (state.stock[k] != null && state.rate[k]) { state.stock[k] += state.rate[k] * mins / 60; changed = true; }
+    }
+    state.stockAt += mins * 60000;
+    return changed;
+  }
+  settleStock();
+  // 計算方式：split 分開計算、pooled 總資源量（最快）、lean 最少屯田令；pooled 旗標 = 是否允許用屯田令補足
+  if (!["split", "pooled", "lean"].includes(state.calcMode)) state.calcMode = state.pooled ? "pooled" : "split";
+  state.pooled = state.calcMode !== "split";
+  const CALC_NAME = { split: "分開計算", pooled: "總資源量（最快）", lean: "最少屯田令" };
+
+  // ---------- 屯田（TunTian.lua：上限 10、每 3 小時恢復 1 個、每次消耗 1 個並取得資源點 24 小時產量、每日可買 3 個） ----------
+  const HOARD = { cap: 10, recoverMs: 3 * 3600e3, hours: 24, buyPerDay: 3 };
+  // s5 資源點每小時產量（ResourceGroundSeason，四種資源點共用），索引 = 等級 0–15
+  const RES_GROUND_OUTPUT = [0, 300, 600, 900, 1500, 2100, 2700, 3300, 3900, 4200, 4500, 4800, 5100, 5400, 5700, 6000];
+  const DAY_MS = 86400e3, TZ_MS = 8 * 3600e3;
+  const dayIndex = ms => Math.floor((ms + TZ_MS) / DAY_MS);          // UTC+8 的日序號
+  if (!state.hoard) state.hoard = { count: null, at: null, nextAt: null, buy: false, boughtDay: null,
+    lv: 0, union: 0 };
+  // 資源點類型可自由轉換，只需一個等級（舊資料為各資源分開的等級，取最高者）
+  if (typeof state.hoard.lv === "object") state.hoard.lv = Math.max(0, ...Object.values(state.hoard.lv || {}).map(Number));
+  const hoardYield = () => Math.round(RES_GROUND_OUTPUT[state.hoard.lv || 0] * HOARD.hours * (1 + (+state.hoard.union || 0) / 100));
+  // 依設定時間推算目前屯田令數量與下一個恢復時間（未滿時每 3 小時 +1）
+  function hoardNow(now = Date.now()) {
+    const h = state.hoard;
+    if (h.count == null) return null;
+    let count = h.count, next = h.nextAt;
+    if (count < HOARD.cap && next != null && now >= next) {
+      const n = Math.floor((now - next) / HOARD.recoverMs) + 1;
+      count = Math.min(HOARD.cap, count + n);
+      next = count >= HOARD.cap ? null : next + n * HOARD.recoverMs;
+    }
+    if (count >= HOARD.cap) next = null;
+    return { count, next };
+  }
+  // 從現在起 hours 小時內最多可取得的屯田令（假設在滿額前就使用，恢復不中斷）
+  function hoardObtainable(hours, now = Date.now()) {
+    const cur = hoardNow(now);
+    if (!cur) return null;
+    const end = now + hours * 3600e3;
+    const first = cur.next != null ? cur.next : now + HOARD.recoverMs;
+    const recover = isFinite(hours) && end >= first ? Math.floor((end - first) / HOARD.recoverMs) + 1 : 0;
+    let buy = 0;
+    if (state.hoard.buy && isFinite(hours)) {
+      if (state.hoard.boughtDay !== dayIndex(now)) buy += HOARD.buyPerDay;
+      buy += HOARD.buyPerDay * (dayIndex(end) - dayIndex(now));
+    }
+    return { current: cur.count, recover, buy, total: cur.count + recover + buy };
+  }
+  // 已設定屯田令數量與資源點等級時，「總資源量（最快）」改為實際使用屯田令加速
+  const hoardReady = () => state.hoard.count != null && state.hoard.lv > 0;
+  function hoardSimInit() {
+    const now = Date.now(), cur = hoardNow(now), h = state.hoard;
+    const H = {
+      held: cur.count,
+      next: cur.next != null ? (cur.next - now) / 3600e3 : null,              // 下一個恢復（滿額時暫停）
+      buy: !!h.buy,
+      buyLeft: h.buy && h.boughtDay !== dayIndex(now) ? HOARD.buyPerDay : 0,  // 當日剩餘可購買數
+      mid: h.buy ? ((dayIndex(now) + 1) * DAY_MS - TZ_MS - now) / 3600e3 : Infinity,  // 下一個 UTC+8 0 時
+      used: 0, bought: 0,
+    };
+    if (H.held < HOARD.cap && H.next == null) H.next = HOARD.recoverMs / 3600e3;
+    return H;
+  }
+  function hoardAdvance(H, T) {
+    for (;;) {
+      const ev = Math.min(H.next == null ? Infinity : H.next, H.mid);
+      if (ev > T) return;
+      if (H.next != null && ev === H.next) {
+        H.held++;
+        H.next = H.held >= HOARD.cap ? null : H.next + HOARD.recoverMs / 3600e3;
+      } else { H.buyLeft = HOARD.buyPerDay; H.mid += 24; }
+    }
+  }
+  function hoardTake(H, T) {
+    hoardAdvance(H, T);
+    if (H.held > 0) {
+      H.held--; H.used++;
+      if (H.next == null) H.next = T + HOARD.recoverMs / 3600e3;           // 低於上限後重新開始恢復
+      return true;
+    }
+    if (H.buyLeft > 0) { H.buyLeft--; H.bought++; H.used++; return true; }
+    return false;
+  }
+  const hoardNextEvent = H => Math.min(H.next == null ? Infinity : H.next, H.buy ? H.mid : Infinity);
+  // 最激進的屯田策略：缺哪種資源就立刻用屯田令（含當日購買額度）補，仍不足才等待產出或下一個屯田令
+  function tokenStep(st, S, R, H, t, Y) {
+    let el = 0;
+    const add = { Wood: 0, Metal: 0, Money: 0 }, use = { Wood: 0, Metal: 0, Money: 0 };
+    const short = k => st.cost[k] - (S[k] + R[k] * el + add[k]);
+    for (let guard = 0; guard < 10000; guard++) {
+      for (;;) {
+        const k = RES.filter(x => short(x) > 1e-6).sort((a, b) => short(b) - short(a))[0];
+        if (!k || !hoardTake(H, t + el)) break;
+        add[k] += Y; use[k]++;
+      }
+      if (!RES.some(x => short(x) > 1e-6)) break;
+      let wProd = 0, lack = null;
+      for (const x of RES) {
+        const v = short(x);
+        if (v <= 1e-6) continue;
+        if (R[x] <= 0) { wProd = Infinity; lack = x; break; }
+        wProd = Math.max(wProd, v / R[x]);
+      }
+      hoardAdvance(H, t + el);
+      const ev = hoardNextEvent(H) - (t + el);
+      if (ev < wProd) { el += Math.max(0, ev); continue; }
+      if (!isFinite(wProd)) return { wait: Infinity, lack };
+      el += wProd;
+      break;
+    }
+    hoardAdvance(H, t + el);
+    return { wait: el, add, use };
+  }
+  const fmtClock = ms => {
+    const t = Math.max(0, Math.round(ms / 1000)), hh = Math.floor(t / 3600), mm = Math.floor(t % 3600 / 60), ss = t % 60;
+    return `${hh}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  };
+  function renderHoardChip() {
+    const cur = hoardNow();
+    $("hoardCnt").textContent = cur ? cur.count : "–";
+    $("hoardTimer").textContent = !cur ? "未設定" : cur.next == null ? "已滿" : fmtClock(cur.next - Date.now());
+  }
+  // 規劃結果的屯田建議
+  function hoardAdvice(steps, tl) {
+    const h = state.hoard;
+    if (h.count == null && !h.lv) return `<div class="note-sm">點頂欄「屯田令」設定數量與資源點等級，可估算屯田能補多少資源並建議使用時機。</div>`;
+    const ob = hoardObtainable(tl.hours);
+    const y = Object.fromEntries(RES.map(k => [k, hoardYield()]));
+    let html = `<div class="eval"><h4>屯田建議</h4><div>每次屯田可得：${y.Wood ? `<b>${fmt(y.Wood)}</b>（Lv${h.lv} 資源點，轉換為所需的資源類型）` : "—（未設定資源點等級）"}${h.union ? `，含聯盟加成 ${h.union}%` : ""}</div>`;
+    if (ob) html += `<div>完成前可取得屯田令：<b>${isFinite(ob.total) ? ob.total : "—"}</b> 個（目前 ${ob.current} + 恢復 ${ob.recover}${h.buy ? ` + 購買 ${ob.buy}` : ""}）</div>`;
+    const need = RES.filter(k => tl.items[k] > 0);
+    if (tl.tokenModel) {
+      const rows = steps.map((st, i) => ({ st, i, use: tl.trace[i].hoard })).filter(r => r.use && RES.some(k => r.use[k]));
+      html += rows.length ? `<div class="scroll" style="margin-top:6px"><table><thead><tr><th>時機</th><th>升級</th><th>屯田</th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td>${fmtAt(tl.at[r.i])}</td><td>第 ${r.i + 1} 步 ${esc(r.st.name)} Lv${r.st.lev} 之前</td>
+          <td>${RES.filter(k => r.use[k]).map(k => `${RES_NAME[k]} ${r.use[k]} 次`).join("、")}</td></tr>`).join("")}
+        </tbody></table></div>` : `<div>這條路徑不需要屯田。</div>`;
+    } else if (state.pooled && need.length) {
+      // 依缺口開始的時間排序，逐一分配屯田令
+      const rows = need.map(k => {
+        const first = tl.trace.findIndex(tr => tr.stock && tr.stock[k] < -1);   // 忽略剛好用完時的浮點誤差
+        return { k, first, last: tl.lowAt[k], times: y[k] ? Math.ceil(tl.items[k] / y[k]) : Infinity };
+      }).sort((a, b) => a.first - b.first);
+      let used = 0;
+      html += `<div class="scroll" style="margin-top:6px"><table><thead><tr><th>資源</th><th class="r">缺口</th><th class="r">需屯田</th><th>開始缺（建議在此之前屯田）</th><th>最遲補足</th><th>屯田令</th></tr></thead><tbody>`;
+      for (const r of rows) {
+        const sf = steps[r.first], sl = steps[r.last];
+        used += r.times;
+        const avail = ob ? hoardObtainable(tl.at[r.last]) : null;
+        const ok = avail && isFinite(r.times) && used <= avail.total;
+        html += `<tr><td>${RES_NAME[r.k]}</td><td class="r num">${fmt(tl.items[r.k])}</td>
+          <td class="r">${isFinite(r.times) ? `${r.times} 次` : "未設定資源點"}</td>
+          <td>第 ${r.first + 1} 步 ${esc(sf.name)} Lv${sf.lev}（${fmtAt(tl.at[r.first])}）</td>
+          <td>第 ${r.last + 1} 步 ${esc(sl.name)} Lv${sl.lev}（${fmtAt(tl.at[r.last])}）</td>
+          <td class="${!avail ? "" : ok ? "ok" : "bad"}">${!avail ? "未設定數量" : ok ? `夠用（累計 ${used}/${avail.total}）` : `不足 ${used - avail.total} 個`}</td></tr>`;
+      }
+      html += `</tbody></table></div>`;
+      if (ob && used > ob.total) html += `<div class="bad">屯田令不夠補足全部缺口，可改用「分開計算」等資源自然恢復，或增加購買。</div>`;
+    } else if (!state.pooled) {
+      const total = RES.reduce((a, k) => a + tl.waitBy[k], 0);
+      const top = RES.reduce((a, k) => tl.waitBy[k] > tl.waitBy[a] ? k : a, "Wood");
+      html += total > 0
+        ? `<div>等待時間主要卡在 <b class="bad">${RES_NAME[top]}</b>（${fmtHours(tl.waitBy[top])}，佔 ${Math.round(tl.waitBy[top] / total * 100)}%）。建議屯田時把資源點轉換為${RES_NAME[top]}${y[top] ? `，每次約可少等 ${fmtHours(y[top] / Math.max(1, tl.rate[top]))}` : ""}。</div>`
+        : `<div>目前庫存足夠，不需要等待，也不需要屯田。</div>`;
+    } else html += `<div>這條路徑不需要用屯田令補足。</div>`;
+    return html + `<div class="note-sm">屯田令以「滿額前就使用、恢復不中斷」估算；超過倉庫上限的屯田收益遊戲中會無法取得。</div></div>`;
+  }
+  const prioOf = bid => +state.priority[bid] || 0;
+  // 優先升級建築：固定建築（含權重 0）與其他權重 > 0 的建築，權重高者在前，同權重依固定順序
+  const prioList = () => {
+    const order = b => { const i = PINNED_PRIO.indexOf(b); return i < 0 ? PINNED_PRIO.length + b : i; };
+    return bids.filter(b => PINNED_PRIO.includes(b) || prioOf(b) > 0).sort((a, b) => prioOf(b) - prioOf(a) || order(a) - order(b));
+  };
+  let sim = new Sim(state.levels);
+  let lastPlan = null;
+
+  function save() {
+    state.levels = { ...sim.levels };
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  // 庫存與回復速度的輸入皆以「萬」為單位
+  function parseWan(s) {
+    s = String(s || "").trim().replace(/,/g, "").replace(/萬$/, "");
+    if (!s || !/^\d*\.?\d+$/.test(s)) return null;
+    return Math.round(parseFloat(s) * 10000);
+  }
+  const toWan = n => String(Math.round(n) / 10000);   // 保留到個位數，避免來回轉換失真
+  const hasStock = () => RES.some(k => state.stock[k] != null);
+  const hasEconomy = () => RES.some(k => state.stock[k] != null || state.rate[k] != null);
+
+  // 被動生產升級資源的建築（每小時產量 = ResOutput × 60）；磨坊產糧草，不影響升級
+  const PRODUCERS = { 48: "Wood", 47: "Metal", 14: "Money" };
+  const hourly = (bid, lev) => (builds[bid].levels[lev].ResOutput || 0) * 60;
+  // 表示「何時」的時間：依切換顯示為剩餘時間（約 X 後）或實際時間點（月/日 時:分）；時長差值仍用 fmtHours
+  function fmtAt(h, short) {
+    if (!isFinite(h)) return "無法完成";
+    if (!state.timeAbs) return h < 1 / 60 ? "現在" : short ? fmtHours(h, true) : `約 ${fmtHours(h)} 後`;
+    const d = new Date(Date.now() + h * 3600e3), pad = n => String(n).padStart(2, "0");
+    return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function fmtHours(h, short) {
+    if (!isFinite(h)) return "無法完成";
+    if (h < 1 / 60) return short ? "立即" : "立即完成";
+    if (h < 1) return Math.ceil(h * 60) + (short ? "分" : " 分鐘");
+    if (h < 24) return (Math.round(h * 10) / 10) + (short ? "時" : " 小時");
+    const hh = Math.round(h), d = Math.floor(hh / 24), r = hh - d * 24;   // 先進位到整點，避免出現「7 天 24 小時」
+    return short ? `${d}天${r}時` : `${d} 天 ${r} 小時`;
+  }
+  // 依目前庫存與每小時回復量，計算每一步可執行的時間點（升級瞬間完成；產能建築升級後提高回復量）
+  // pooled：只要三種資源合計足夠即可升級，個別資源的缺口記為需用屯田令補足的量
+  // lean：先以 pooled 求出最快完成時間作為期限，每一步等到資源各自足夠才升，期限到時才用屯田令補足
+  function timeline(steps, mode = state.calcMode) {
+    if (mode !== "lean") return simulate(steps, mode, Infinity);
+    const fast = simulate(steps, "pooled", Infinity);
+    const lean = simulate(steps, "lean", fast.hours);
+    lean.fast = fast;
+    return lean;
+  }
+  function simulate(steps, mode, deadline) {
+    const S = {}, R = {}, low = {}, lowAt = {}, trace = [], waitBy = {};
+    for (const k of RES) { S[k] = state.stock[k] || 0; R[k] = state.rate[k] || 0; low[k] = 0; lowAt[k] = -1; waitBy[k] = 0; }
+    const sum = o => RES.reduce((a, k) => a + o[k], 0);
+    const tokenModel = mode === "pooled" && hoardReady();
+    const H = tokenModel ? hoardSimInit() : null, Y = tokenModel ? hoardYield() : 0;
+    let t = 0, blocked = null;
+    const at = [];
+    for (const st of steps) {
+      let wait = 0, add = null, use = null;
+      if (tokenModel) {
+        const r = tokenStep(st, S, R, H, t, Y);
+        wait = r.wait; add = r.add; use = r.use;
+        if (!isFinite(wait)) blocked = blocked || r.lack;
+      } else if (mode === "pooled") {
+        const need = sum(st.cost) - sum(S);
+        if (need > 0) wait = sum(R) > 0 ? need / sum(R) : Infinity;
+        if (!isFinite(wait)) blocked = blocked || "all";
+      } else {
+        let split = 0, lack = null, limit = null;
+        for (const k of RES) {
+          const need = st.cost[k] - S[k];
+          if (need <= 0) continue;
+          if (R[k] <= 0) { split = Infinity; lack = lack || k; break; }
+          if (need / R[k] > split) { split = need / R[k]; limit = k; }
+        }
+        wait = mode === "lean" ? Math.max(0, Math.min(t + split, deadline) - t) : split;
+        if (!isFinite(wait)) blocked = blocked || lack;
+        else if (limit) waitBy[limit] += wait;
+      }
+      if (!isFinite(wait)) { t = Infinity; at.push(Infinity); trace.push({ wait: Infinity }); continue; }
+      t += wait;
+      for (const k of RES) {
+        S[k] += R[k] * wait + (add ? add[k] : 0) - st.cost[k];
+        if (S[k] < low[k] && S[k] < -1) { low[k] = S[k]; lowAt[k] = at.length; }
+      }
+      const res = PRODUCERS[st.bid];
+      if (res) R[res] += hourly(st.bid, st.lev) - hourly(st.bid, st.lev - 1);
+      at.push(t);
+      trace.push({ wait, t, stock: { ...S }, rate: { ...R }, hoard: use });
+    }
+    const items = {};
+    for (const k of RES) items[k] = Math.max(0, Math.round(-low[k]));
+    return { hours: t, at, blocked, stock: S, rate: R, items, lowAt, trace, waitBy,
+      tokenModel, tokensUsed: H ? H.used : 0, bought: H ? H.bought : 0, hoardEnd: H && { held: H.held, next: H.next } };
+  }
+  const affordable = c => {
+    if (!state.pooled) return RES.every(k => state.stock[k] == null || state.stock[k] >= c[k]);
+    if (!hasStock()) return true;
+    return RES.reduce((a, k) => a + (state.stock[k] || 0), 0) >= c.Wood + c.Metal + c.Money;
+  };
+
+  // ---------- 繪製 ----------
+  function labelHtml(bid) {
+    const b = builds[bid], lev = sim.levels[bid];
+    if (lev >= b.maxLev) return `<span class="lv">${lev}/${b.maxLev}</span><span class="max">MAX</span>`;
+    const blocked = sim.check(bid).length > 0;
+    const canPay = affordable(sim.cost(bid, lev + 1));
+    return `<span class="lv"><i class="${blocked ? "red" : ""}">${lev}</i>/${b.maxLev}</span>${!blocked && canPay ? '<span class="up">↑</span>' : ""}`;
+  }
+  function cardHtml(bid) {
+    const b = builds[bid];
+    return `<button class="card${bid === state.selected ? " sel" : ""}${sim.levels[bid] === 0 ? " lock" : ""}" data-bid="${bid}">
+      <div class="plate"><div class="house"><b>${esc(b.name[0])}</b></div></div>
+      <div class="label">${prioOf(bid) ? `<span class="prio-badge" title="優先權重 ${prioOf(bid)}">優${prioOf(bid)}</span>` : ""}${esc(b.name)} ${labelHtml(bid)}</div></button>`;
+  }
+  function renderTiers() {
+    // 君主殿置於最上方中間；演武堂等單級建築不顯示（繁榮度仍計入總繁榮度）
+    $("tiers").innerHTML = `<div class="tier top">${cardHtml(MAIN)}</div>` +
+      LAYOUT.map(r => `<div class="tier"><div class="tier-mark"><span><b>${r.tier}</b></span></div>
+      ${r.bids.map(cardHtml).join("")}</div>`).join("");
+  }
+  function renderSummary() {
+    const main = builds[MAIN], ml = sim.levels[MAIN];
+    const next = ml < main.maxLev ? main.levels[ml + 1].CloutLimit : null;
+    $("summary").innerHTML = `
+      <div class="chip"><div class="k">${esc(main.name)}</div><div class="v num">Lv ${ml} / ${main.maxLev}</div></div>
+      <div class="chip"><div class="k">總繁榮度${next ? `（下一級需 ${fmt(next)}）` : ""}</div><div class="v num ${next && sim.clout() < next ? "bad" : ""}">${fmt(sim.clout())}</div></div>
+      <div class="chip"><div class="k">建築戰鬥力</div><div class="v num">${fmt(sim.power())}</div></div>`;
+    const list = prioList();
+    $("prio").innerHTML = `<span class="prio-title">優先升級</span>` +
+      list.map(bid => {
+        const pinned = PINNED_PRIO.includes(bid);
+        return `<span class="prio-item${prioOf(bid) ? "" : " zero"}"><button class="prio-name" data-sel="${bid}">${esc(builds[bid].name)}</button>
+          <input type="number" min="0" max="99" value="${prioOf(bid)}" data-prio="${bid}" title="優先權重，0 = 不優先">
+          ${pinned ? "" : `<button class="prio-del" data-prio-del="${bid}" title="移除">×</button>`}</span>`;
+      }).join("") +
+      `<span class="prio-empty" title="補繁榮度時先升權重高的建築，其餘建築從等級最低的開始；同等級時挑升級後最貼近門檻的。其他建築可在右側面板設定權重後加入。">權重越大越先升，0 = 不優先</span>`;
+  }
+  function prow(icon, k, v) {
+    return `<div class="prow"><div class="ic">${icon}</div><div class="k">${k}</div><div class="v num">${v}</div></div>`;
+  }
+  function renderPanel() {
+    const bid = state.selected, b = builds[bid], lev = sim.levels[bid];
+    const full = lev >= b.maxLev, cur = b.levels[lev], nxt = full ? null : b.levels[lev + 1];
+    const arrow = (a, c) => full ? fmt(a) : `${fmt(a)}<span class="arrow">»</span>${fmt(c)}`;
+    let rows = prow("級", "等級", full ? `${lev}（已滿級）` : `${lev}<span class="arrow">»</span>${lev + 1}`);
+    if (bid === MAIN) rows += prow("榮", "繁榮度", full ? fmt(sim.clout()) : `${fmt(sim.clout())}<span class="ok"> +${fmt((nxt.Clout || 0) - (cur.Clout || 0))}</span>`);
+    else rows += prow("榮", "繁榮度", arrow(cur.Clout || 0, nxt && nxt.Clout || 0));
+    // 只保留兵營的兵階（Level）與軍事府的帶兵數（SoldierNum）
+    if (CAMPS.includes(bid)) rows += prow("階", "兵階等級", arrow(cur.Level || 0, nxt && nxt.Level || 0));
+    if (bid === ARMY) rows += prow("兵", "部隊帶兵數", arrow(cur.SoldierNum || 0, nxt && nxt.SoldierNum || 0));
+    let costRows = "", warn = "", canUp = false;
+    if (!full) {
+      const c = sim.cost(bid, lev + 1);
+      const resHtml = RES.filter(k => c[k]).map(k => {
+        const okk = state.stock[k] == null || state.stock[k] >= c[k];
+        return `<span class="${state.stock[k] == null ? "" : okk ? "ok" : "bad"}">${RES_ICON[k]} ${fmt(c[k])}</span>`;
+      }).join("　") || "無";
+      costRows += prow("資", "資源需求", resHtml);
+      if (nxt.CloutLimit) {
+        const okc = sim.clout() >= nxt.CloutLimit;
+        costRows += prow("榮", "繁榮度需求", `<span class="${okc ? "ok" : "bad"}">${fmt(sim.clout())}</span> / ${fmt(nxt.CloutLimit)}`);
+      }
+      for (const r of nxt.UpgradeLimit || []) {
+        const okr = (sim.levels[r.bid] || 0) >= r.lev;
+        costRows += prow("前", esc(builds[r.bid].name), `<span class="${okr ? "ok" : "bad"}">${sim.levels[r.bid] || 0}</span> / ${r.lev}`);
+      }
+      const reasons = sim.check(bid);
+      if (reasons.length) warn = reasons.join("、");
+      else if (!affordable(c)) warn = "資源不足，請先獲取資源";
+      canUp = !reasons.length && affordable(c);
+    }
+    $("panel").innerHTML = `
+      <h2>${esc(b.name)}</h2><div class="divider"></div>
+      ${rows}
+      ${full ? "" : `<div class="sect">升級消耗</div>${costRows}`}
+      <div class="warn">${esc(warn)}</div>
+      <button class="btn cream" id="upBtn" ${canUp ? "" : "disabled"}>升　級</button>
+      <div class="plan-ctl">
+        <span style="color:var(--muted);font-size:14px">規劃升到</span>
+        <input type="number" id="planLev" min="1" max="${b.maxLev}" value="${planLevMemo[bid] ?? b.maxLev}">
+        <span style="color:var(--muted);font-size:14px">級</span>
+        <button class="btn gold" id="planBtn">計算路徑</button>
+      </div>
+      ${bid === MAIN ? "" : `<div class="plan-ctl">
+        <span style="color:var(--muted);font-size:14px">優先權重</span>
+        <input type="number" min="0" max="99" value="${prioOf(bid)}" data-prio="${bid}">
+        <span style="color:var(--muted);font-size:12px">0 = 不優先，數字越大越先升</span>
+      </div>`}`;
+  }
+  function renderInputs() {
+    for (const k of RES) {
+      const inp = $("st" + k), rt = $("rt" + k);
+      if (document.activeElement !== inp) inp.value = state.stock[k] == null ? "" : toWan(state.stock[k]);
+      if (document.activeElement !== rt) rt.value = state.rate[k] == null ? "" : toWan(state.rate[k]);
+    }
+  }
+  function render() {
+    renderSummary(); renderTiers(); renderPanel(); renderInputs();
+  }
+  const planLevMemo = {};   // 各建築「規劃升到」輸入的值
+  document.addEventListener("input", e => { if (e.target.id === "planLev") planLevMemo[state.selected] = +e.target.value || undefined; });
+  // 每分鐘結算後只更新受庫存影響的部分；使用者正在操作右側面板時不重繪面板
+  function refreshEconomy() {
+    renderSummary(); renderTiers(); renderInputs();
+    if (!$("panel").contains(document.activeElement)) renderPanel();
+  }
+
+  function makePlan(bid, target, priority) {
+    const p = new Sim(sim.levels, priority);
+    let err = null;
+    try { p.reach(bid, target); } catch (e) { if (e instanceof PlanError) err = e.message; else throw e; }
+    return { p, err, tl: hasEconomy() ? timeline(p.steps) : null };
+  }
+  // 產能建築評估：比較「設為最優先」與「不設優先」時，達成目標所需的總時間；
+  // 以總資源量計算時，三種產出對合計的影響相同，改以「需用屯田令的量」一併比較
+  function evaluateProducers(bid, target, base) {
+    const top = Math.min(99, Math.max(0, ...Object.values(state.priority).map(Number)) + 1);
+    const pooled = state.pooled, tokenModel = !!(base.tl && base.tl.tokenModel);
+    const itemSum = tl => tokenModel ? tl.tokensUsed : RES.reduce((a, k) => a + tl.items[k], 0);
+    const wanShort = tokenModel ? n => `${n} 次` : n => (Math.round(n / 1000) / 10) + "萬";
+    const rows = [];
+    for (const pb of Object.keys(PRODUCERS).map(Number)) {
+      const lv = sim.levels[pb];
+      if (lv >= builds[pb].maxLev || pb === bid) continue;
+      const withP = makePlan(bid, target, { ...state.priority, [pb]: top });
+      const without = { ...state.priority }; delete without[pb];
+      const noP = makePlan(bid, target, without);
+      const tw = withP.tl.hours, tn = noP.tl.hours;
+      const iw = itemSum(withP.tl), inn = itemSum(noP.tl);
+      const gain = hourly(pb, lv + 1) - hourly(pb, lv);
+      const dt = tn - tw, di = pooled ? inn - iw : 0;          // 正值 = 設為最優先較好
+      const tTxt = dt > 0 ? `省 ${fmtHours(dt)}` : `多 ${fmtHours(-dt)}`;
+      const iTxt = di > 0 ? `屯田少 ${wanShort(di)}` : `屯田多 ${wanShort(-di)}`;
+      const tSig = Math.abs(dt) > 0.05 ? Math.sign(dt) : 0, iSig = Math.abs(di) >= (tokenModel ? 1 : 1000) ? Math.sign(di) : 0;
+      let verdict, cls = "";
+      if (!isFinite(tw) && !isFinite(tn)) verdict = "無法完成";
+      else if (tSig >= 0 && iSig >= 0 && tSig + iSig > 0) {
+        verdict = `划算，${[tSig ? tTxt : "", iSig ? iTxt : ""].filter(Boolean).join("、")}`; cls = "good";
+      } else if (tSig <= 0 && iSig <= 0 && tSig + iSig < 0) {
+        verdict = `不划算，${[tSig ? tTxt : "", iSig ? iTxt : ""].filter(Boolean).join("、")}`; cls = "bad";
+      } else if (!tSig && !iSig) verdict = "差不多";
+      else { verdict = `${tTxt}，但${iTxt}`; cls = "mixed"; }  // 時間與屯田令一好一壞，由玩家取捨
+      rows.push(`<tr><td>${esc(builds[pb].name)}</td><td>${RES_NAME[PRODUCERS[pb]]}</td><td>Lv${lv}</td><td class="r num">+${fmt(gain)}/時</td>
+        <td class="r">${fmtAt(tw)}${pooled ? `<br><small>屯田 ${wanShort(iw)}</small>` : ""}</td>
+        <td class="r">${fmtAt(tn)}${pooled ? `<br><small>屯田 ${wanShort(inn)}</small>` : ""}</td><td class="${cls}">${verdict}</td>
+        <td>${prioOf(pb) ? `<button class="btn" data-eval-prio="${pb}" data-w="0">取消優先</button>` : ""}
+          ${(cls === "good" || cls === "mixed") && prioOf(pb) !== top ? `<button class="btn gold" data-eval-prio="${pb}" data-w="${top}">設為最優先</button>` : ""}</td></tr>`);
+    }
+    if (!rows.length) return "";
+    return `<div class="eval"><h4>產能建築評估</h4>
+      <div class="scroll"><table><thead><tr><th>建築</th><th>產出</th><th>目前</th><th class="r">下一級增產</th>
+        <th class="r">設為最優先</th><th class="r">不設優先</th><th>結論</th><th></th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px">比較達成目標${state.timeAbs ? "的完成時間" : "所需的總時間"}${pooled ? "與需用屯田令的量" : ""}（目前設定：${fmtAt(base.tl.hours)}${pooled ? `，屯田 ${wanShort(itemSum(base.tl))}` : ""}）。產能建築升級後，每小時回復量會跟著提高。</div></div>`;
+  }
+  let lastPlanArgs = null, lastDebugPlan = null;
+  function runPlan(bid = state.selected, target = +$("planLev").value) {
+    lastPlanArgs = [bid, target];
+    const plan = makePlan(bid, target, state.priority), { p, err, tl } = plan;
+    lastPlan = p; lastPlan.tl = tl;
+    lastDebugPlan = { bid, target, steps: p.steps, tl, err };
+    logPlan();
+    const total = p.totalCost();
+    const totalAll = total.Wood + total.Metal + total.Money;
+    const top = RES.reduce((a, k) => total[k] > total[a] ? k : a, "Wood");
+    let lack;
+    if (state.pooled) {
+      const have = RES.reduce((a, k) => a + (state.stock[k] || 0), 0);
+      lack = hasStock() && have < totalAll ? [`合計差 ${fmt(totalAll - have)}`] : [];
+    } else {
+      lack = RES.filter(k => state.stock[k] != null && state.stock[k] < total[k])
+        .map(k => `${RES_NAME[k]}差 ${fmt(total[k] - state.stock[k])}`);
+    }
+    let timeInfo = "";
+    if (tl) {
+      timeInfo = isFinite(tl.hours)
+        ? `<div>${state.timeAbs ? `預計完成 <b class="ok">${fmtAt(tl.hours)}</b>（耗時 ${fmtHours(tl.hours)}，` : `預計耗時 <b class="ok">${fmtHours(tl.hours)}</b>（`}依目前庫存與每小時回復量，${CALC_NAME[state.calcMode]}）</div>`
+        : `<div class="bad">${tl.blocked === "all" ? "資源合計" : RES_NAME[tl.blocked]}不足且沒有回復量，無法完成。請輸入每小時回復量。</div>`;
+      const need = RES.filter(k => tl.items[k] > 0);
+      if (tl.tokenModel && isFinite(tl.hours)) {
+        // 對照「最少屯田令」：同一條路徑、同樣在此時間完成，只在期限到時才屯田（缺口換算成次數）
+        const lean = timeline(p.steps, "lean"), Yd = hoardYield();
+        const leanTimes = RES.reduce((a, k) => a + Math.ceil(lean.items[k] / Yd), 0);
+        const diff = tl.tokensUsed - leanTimes;
+        timeInfo += `<div style="color:var(--gold)">使用屯田 <b>${tl.tokensUsed}</b> 次${tl.bought ? `（其中購買 ${tl.bought} 個）` : ""}，每次 ${fmt(Yd)}，完成時剩屯田令 ${tl.hoardEnd.held} 個
+          <div style="color:var(--muted);font-size:12px">缺哪種資源就立刻屯田補上，屯田令不夠才等待產出或恢復。
+          對照（同一條路徑）：最少屯田令 ${leanTimes} 次、${state.timeAbs ? fmtAt(lean.hours) : fmtHours(lean.hours)}${diff > 0 ? `，改用最少屯田令可少屯 <b style="color:var(--green)">${diff}</b> 次` : diff < 0 ? `，反而要多屯 ${-diff} 次（目前的屯田方式已是最少）` : "，次數相同"}</div></div>`;
+      } else if (state.pooled && isFinite(tl.hours)) {
+        // 對照兩種用屯田令的方式（同一條路徑）
+        const fast = tl.fast || timeline(p.steps, "pooled"), lean = state.calcMode === "lean" ? tl : timeline(p.steps, "lean");
+        const tot = x => RES.reduce((a, k) => a + x.items[k], 0);
+        if (fast.tokenModel) {
+          // 已設定屯田：以屯田次數比較（最少屯田令的缺口換算成次數）
+          const Yd = hoardYield(), leanTimes = RES.reduce((a, k) => a + Math.ceil(lean.items[k] / Yd), 0);
+          timeInfo += `<div style="color:var(--muted);font-size:12px">對照（同一條路徑）：總資源量（最快）屯田 ${fast.tokensUsed} 次、${state.timeAbs ? fmtAt(fast.hours) : fmtHours(fast.hours)}；
+            最少屯田令 ${leanTimes} 次、${state.timeAbs ? fmtAt(lean.hours) : fmtHours(lean.hours)}${fast.tokensUsed > leanTimes ? `，可少屯 <b style="color:var(--green)">${fast.tokensUsed - leanTimes}</b> 次` : ""}</div>`;
+        } else
+        timeInfo += `<div style="color:var(--muted);font-size:12px">對照（同一條路徑）：總資源量（最快）屯田令 ${fmt(tot(fast))}、${state.timeAbs ? fmtAt(fast.hours) : fmtHours(fast.hours)}；
+          最少屯田令 ${fmt(tot(lean))}、${state.timeAbs ? fmtAt(lean.hours) : fmtHours(lean.hours)}${tot(fast) > tot(lean) ? `，可少用 <b style="color:var(--green)">${fmt(tot(fast) - tot(lean))}</b>` : ""}</div>`;
+      }
+      if (state.pooled && isFinite(tl.hours) && need.length)
+        timeInfo += `<div style="color:var(--gold)">${state.calcMode === "lean" ? "需用屯田令補足" : "途中需用屯田令補足（最大缺口）"}：${need.map(k => {
+            const i = tl.lowAt[k], st = p.steps[i];
+            return `${RES_NAME[k]} ${fmt(tl.items[k])}<small style="color:var(--muted)">（第 ${i + 1} 步 ${esc(st.name)} Lv${st.lev}）</small>`;
+          }).join("、")}
+          <div style="color:var(--muted);font-size:12px">${state.calcMode === "lean"
+            ? "每一步等到資源各自足夠才升級，只在期限（與最快方式同時完成）到時才用屯田令補足。"
+            : "缺口發生在途中；補足後產出會繼續累積，所以完成時仍可能有剩餘。"}完成時剩餘：${RES.map(k => `${RES_NAME[k]} ${fmt(Math.round(tl.stock[k] + tl.items[k]))}`).join("、")}</div></div>`;
+    }
+    const share = k => totalAll ? Math.round(total[k] / totalAll * 100) : 0;
+    const topInfo = totalAll ? `<div>消耗最大：<b class="bad">${RES_NAME[top]} ${fmt(total[top])}</b>（佔 ${share(top)}%；${RES.filter(k => k !== top).map(k => `${RES_NAME[k]} ${share(k)}%`).join("、")}）</div>` : "";
+    $("planTitle").textContent = `升級路徑：${builds[bid].name} → Lv${Math.min(target, builds[bid].maxLev)}`;
+    $("planInfo").innerHTML = `${err ? `<div class="bad">規劃中斷：${esc(err)}</div>` : ""}
+      共 <b>${p.steps.length}</b> 步　總消耗 ${RES.map(k => `${RES_NAME[k]} <b class="num">${fmt(total[k])}</b>`).join("　")}
+      　完成後繁榮度 ${fmt(p.clout())}${topInfo}${!tl && lack.length ? `<div class="bad">庫存不足：${lack.join("、")}</div>` : ""}${timeInfo}
+      ${tl && isFinite(tl.hours) ? hoardAdvice(p.steps, tl) : ""}
+      ${tl ? evaluateProducers(bid, target, plan) : `<div style="color:var(--muted);font-size:12px;margin-top:4px">在頂欄輸入庫存與每小時回復量（萬），可估算耗時並評估產能建築是否划算。</div>`}`;
+    $("planSteps").innerHTML = p.steps.length ? `<table><thead><tr><th>#</th><th>建築</th><th>Lv</th><th>原因</th>
+      ${RES.map(k => `<th class="r">${RES_NAME[k]}</th>`).join("")}<th class="r">繁榮度</th>${tl ? '<th class="r">時間點</th>' : ""}${tl && tl.tokenModel ? "<th>升級前屯田</th>" : ""}</tr></thead><tbody>
+      ${p.steps.map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.name)}</td><td>${s.lev}</td><td class="reason-${s.reason}">${s.reason}</td>
+        ${RES.map(k => `<td class="r num">${fmt(s.cost[k])}</td>`).join("")}<td class="r num">${fmt(s.clout)}</td>
+        ${tl ? `<td class="r">${fmtAt(tl.at[i], true)}</td>` : ""}${tl && tl.tokenModel ? `<td class="hoard-cell">${(u => u ? RES.filter(k => u[k]).map(k => `${RES_ICON[k]}×${u[k]}`).join(" ") : "")(tl.trace[i].hoard)}</td>` : ""}</tr>`).join("")}
+      </tbody></table>` : "";
+    $("applyPlan").disabled = !p.steps.length;
+    $("planBox").hidden = false;
+    $("planBox").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function spend(c) {
+    for (const k of RES) if (state.stock[k] != null) state.stock[k] = Math.max(0, state.stock[k] - c[k]);
+  }
+  function addProduction(bid, lev) {
+    const res = PRODUCERS[bid];
+    if (res && state.rate[res] != null) state.rate[res] += hourly(bid, lev) - hourly(bid, lev - 1);
+  }
+
+  // ---------- 事件 ----------
+  $("tiers").addEventListener("click", e => {
+    const card = e.target.closest("[data-bid]");
+    if (!card) return;
+    state.selected = +card.dataset.bid; save(); renderTiers(); renderPanel();
+  });
+  $("panel").addEventListener("click", e => {
+    if (e.target.id === "upBtn") {
+      const bid = state.selected;
+      try {
+        sim.upgrade(bid, "手動");
+        settleStock();
+        spend(sim.steps[sim.steps.length - 1].cost); addProduction(bid, sim.levels[bid]); save(); render();
+      }
+      catch (err) { if (!(err instanceof PlanError)) throw err; }
+    } else if (e.target.id === "planBtn") runPlan();
+  });
+  function setPriority(bid, w) {
+    w = Math.max(0, Math.min(99, Math.round(+w || 0)));
+    if (w) state.priority[bid] = w; else delete state.priority[bid];
+    save(); renderSummary(); renderTiers(); renderPanel();
+  }
+  document.addEventListener("change", e => {
+    const p = e.target.closest("[data-prio]");
+    if (p) setPriority(+p.dataset.prio, p.value);
+  });
+  $("prio").addEventListener("click", e => {
+    const del = e.target.closest("[data-prio-del]"), sel = e.target.closest("[data-sel]");
+    if (del) setPriority(+del.dataset.prioDel, 0);
+    else if (sel) { state.selected = +sel.dataset.sel; save(); renderTiers(); renderPanel(); }
+  });
+  for (const k of RES) {
+    $("st" + k).addEventListener("change", e => { settleStock(); state.stock[k] = parseWan(e.target.value); state.stockAt = Date.now(); save(); render(); });
+    $("rt" + k).addEventListener("change", e => { settleStock(); state.rate[k] = parseWan(e.target.value); save(); render(); });
+  }
+  $("calcMode").value = state.calcMode;
+  $("calcMode").addEventListener("change", e => {
+    state.calcMode = e.target.value; state.pooled = state.calcMode !== "split"; save(); render();
+    if (!$("planBox").hidden && lastPlanArgs) runPlan(...lastPlanArgs);
+  });
+  // ---------- 分享設定：以網址 #s=<base64url(JSON)> 傳遞，不含截圖；若已算出路徑一併記錄 ----------
+  const SHARE_VER = 1;
+  const b64enc = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const b64dec = str => decodeURIComponent(escape(atob(str.replace(/-/g, "+").replace(/_/g, "/"))));
+  function sharePayload() {
+    const h = state.hoard;
+    return {
+      v: SHARE_VER, levels: { ...sim.levels }, stock: state.stock, stockAt: state.stockAt, rate: state.rate,
+      priority: state.priority, calcMode: state.calcMode, timeAbs: !!state.timeAbs, selected: state.selected,
+      hoard: { count: h.count, at: h.at, nextAt: h.nextAt, buy: h.buy, boughtDay: h.boughtDay, lv: h.lv, union: h.union },
+      plan: !$("planBox").hidden && lastPlanArgs ? { bid: lastPlanArgs[0], target: lastPlanArgs[1] } : null,
+    };
+  }
+  // 二進位打包（#z=）：等級 5 bit、數字用 varint、開關併成旗標，再 Base64URL；比 JSON 短很多
+  const CALC_CODES = ["split", "pooled", "lean"];
+  const bytesToB64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const b64ToBytes = str => Uint8Array.from(atob(str.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+  function packShare(d) {
+    const out = [];
+    const varint = n => { n = Math.max(0, Math.round(n)); while (n >= 128) { out.push((n % 128) | 128); n = Math.floor(n / 128); } out.push(n); };
+    const h = d.hoard, has = v => v !== null && v !== undefined;
+    const prio = Object.entries(d.priority).map(([b, w]) => [bids.indexOf(+b), +w]).filter(([i, w]) => i >= 0 && w > 0);
+    out.push(2, bids.length);
+    out.push(CALC_CODES.indexOf(d.calcMode) | (d.timeAbs ? 4 : 0) | (h.buy ? 8 : 0) | (d.plan ? 16 : 0)
+      | (has(h.count) ? 32 : 0) | (has(h.nextAt) ? 64 : 0) | (has(h.boughtDay) ? 128 : 0));
+    let mask = 0;
+    RES.forEach((k, i) => { if (has(d.stock[k])) mask |= 1 << i; if (has(d.rate[k])) mask |= 8 << i; });
+    out.push(mask);
+    // 建築等級：依 bid 排序，每棟 5 bit
+    let acc = 0, nb = 0;
+    for (const b of bids) { acc |= (d.levels[b] & 31) << nb; nb += 5; while (nb >= 8) { out.push(acc & 255); acc >>>= 8; nb -= 8; } }
+    if (nb) out.push(acc & 255);
+    RES.forEach(k => { if (has(d.stock[k])) varint(d.stock[k]); });
+    RES.forEach(k => { if (has(d.rate[k])) varint(d.rate[k]); });
+    varint(d.stockAt / 1000);                                       // 庫存結算時間（秒）
+    out.push(Math.max(0, bids.indexOf(d.selected)));
+    out.push(prio.length); prio.forEach(([i, w]) => out.push(i, w));
+    out.push(h.lv || 0); varint((h.union || 0) * 10);
+    if (has(h.count)) out.push(h.count);
+    if (has(h.nextAt)) varint(h.nextAt / 1000);                     // 下一個屯田令恢復時間（秒）
+    if (has(h.boughtDay)) varint(h.boughtDay);
+    if (d.plan) out.push(bids.indexOf(d.plan.bid), d.plan.target);
+    return bytesToB64(out);
+  }
+  function unpackShare(str) {
+    const b = b64ToBytes(str);
+    let pos = 0;
+    const byte = () => { if (pos >= b.length) throw new Error("資料不完整"); return b[pos++]; };
+    const varint = () => { let n = 0, mul = 1, x; do { x = byte(); n += (x & 127) * mul; mul *= 128; } while (x & 128); return n; };
+    if (byte() !== 2) throw new Error("版本不符");
+    if (byte() !== bids.length) throw new Error("建築資料版本不符");
+    const flags = byte(), mask = byte();
+    const levels = {};
+    let acc = 0, nb = 0;
+    for (const bd of bids) { while (nb < 5) { acc |= byte() << nb; nb += 8; } levels[bd] = Math.min(acc & 31, builds[bd].maxLev); acc >>>= 5; nb -= 5; }
+    const stock = {}, rate = {};
+    RES.forEach((k, i) => { stock[k] = mask & (1 << i) ? varint() : null; });
+    RES.forEach((k, i) => { rate[k] = mask & (8 << i) ? varint() : null; });
+    const stockAt = varint() * 1000;
+    const selected = bids[byte()] ?? MAIN;
+    const priority = {};
+    for (let n = byte(); n > 0; n--) { const i = byte(), w = byte(); if (bids[i]) priority[bids[i]] = w; }
+    const hoard = { lv: byte(), union: varint() / 10, buy: !!(flags & 8), count: null, nextAt: null, boughtDay: null, at: Date.now() };
+    if (flags & 32) hoard.count = byte();
+    if (flags & 64) hoard.nextAt = varint() * 1000;
+    if (flags & 128) hoard.boughtDay = varint();
+    const plan = flags & 16 ? { bid: bids[byte()], target: byte() } : null;
+    return { v: 2, levels, stock, rate, stockAt, priority, calcMode: CALC_CODES[flags & 3] || "split", timeAbs: !!(flags & 4), selected, hoard, plan };
+  }
+  const shareUrl = () => location.origin + location.pathname + "#z=" + packShare(sharePayload());
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+    const ta = $("shareUrl"); ta.focus(); ta.select();
+    try { return document.execCommand("copy"); } catch (e) { return false; }
+  }
+  let pendingShare = null;
+  $("shareBtn").addEventListener("click", async () => {
+    settleStock(); save();
+    const d = sharePayload(), url = shareUrl();
+    pendingShare = null;
+    $("shareTitle").textContent = "分享設定";
+    $("shareBody").innerHTML = `連結包含：建築等級、庫存與每小時產量、優先權重、計算方式（${CALC_NAME[d.calcMode]}）、屯田設定、時間顯示方式。截圖不會分享。
+      ${d.plan ? `<br>也包含目前算出的升級路徑：<b>${esc(builds[d.plan.bid].name)} → Lv${d.plan.target}</b>，對方開啟後會自動計算。` : "<br>尚未計算升級路徑；先按「計算路徑」再分享，可一併分享路徑。"}`;
+    $("shareUrl").value = url;
+    $("shareAction").textContent = "複製連結";
+    $("shareMsg").textContent = "";
+    $("shareDlg").showModal();
+    $("shareMsg").textContent = await copyText(url) ? "已複製到剪貼簿" : "請手動複製上方連結";
+  });
+  $("shareClose").addEventListener("click", () => { $("shareDlg").close(); if (pendingShare) history.replaceState(null, "", location.pathname); pendingShare = null; });
+  $("shareAction").addEventListener("click", async () => {
+    if (!pendingShare) { $("shareMsg").textContent = await copyText($("shareUrl").value) ? "已複製到剪貼簿" : "請手動複製上方連結"; return; }
+    applyShare(pendingShare);
+  });
+  function applyShare(d) {
+    for (const k of ["stock", "rate", "priority", "calcMode", "timeAbs", "selected", "stockAt"]) if (d[k] !== undefined) state[k] = d[k];
+    if (d.hoard) state.hoard = Object.assign(state.hoard, d.hoard);
+    state.pooled = state.calcMode !== "split";
+    sim = new Sim(d.levels);
+    settleStock(); save();
+    $("calcMode").value = state.calcMode; syncTimeBtn(); renderHoardChip();
+    $("planBox").hidden = true;
+    render();
+    pendingShare = null;
+    $("shareDlg").close();
+    history.replaceState(null, "", location.pathname);
+    if (d.plan && builds[d.plan.bid]) {
+      state.selected = d.plan.bid; planLevMemo[d.plan.bid] = d.plan.target;
+      renderTiers(); renderPanel(); runPlan(d.plan.bid, d.plan.target);
+    }
+  }
+  // 開啟分享連結：先確認再取代本機設定
+  function checkShareLink() {
+    const m = location.hash.match(/^#([sz])=([A-Za-z0-9_-]+)$/);
+    if (!m) return;
+    let d;
+    try { d = m[1] === "z" ? unpackShare(m[2]) : JSON.parse(b64dec(m[2])); }   // #s= 為舊版 JSON 連結
+    catch (e) { d = null; }
+    if (!d || !d.levels) { history.replaceState(null, "", location.pathname); return; }
+    pendingShare = d;
+    $("shareTitle").textContent = "載入分享的設定？";
+    $("shareBody").innerHTML = `這個連結包含：君主殿 Lv${d.levels[MAIN] ?? "?"}、計算方式「${CALC_NAME[d.calcMode] || "?"}」${d.plan && builds[d.plan.bid] ? `、升級路徑 ${esc(builds[d.plan.bid].name)} → Lv${d.plan.target}` : ""}。
+      <br><span class="bad">載入後會取代你目前在這個瀏覽器的設定。</span>`;
+    $("shareUrl").value = location.href;
+    $("shareAction").textContent = "載入";
+    $("shareMsg").textContent = "";
+    $("shareDlg").showModal();
+  }
+  window.addEventListener("hashchange", checkShareLink);
+  const syncTimeBtn = () => { $("timeMode").textContent = state.timeAbs ? "時間：時間點" : "時間：剩餘時間"; };
+  syncTimeBtn();
+  $("timeMode").addEventListener("click", () => {
+    state.timeAbs = !state.timeAbs; save(); syncTimeBtn();
+    if (lastPlanArgs) runPlan(...lastPlanArgs);
+  });
+  $("planBox").addEventListener("click", e => {
+    const b = e.target.closest("[data-eval-prio]");
+    if (!b || !lastPlanArgs) return;
+    setPriority(+b.dataset.evalPrio, +b.dataset.w);
+    runPlan(...lastPlanArgs);
+  });
+  $("applyPlan").addEventListener("click", () => {
+    if (!lastPlan) return;
+    state.stockAt = Date.now();   // 套用後的庫存視為現在的值
+    if (lastPlan.tl && isFinite(lastPlan.tl.hours)) {
+      // 套用後的庫存 = 期間產出 - 消耗；回復量含產能建築的提升
+      for (const k of RES) {
+        if (state.stock[k] != null || state.rate[k] != null) state.stock[k] = Math.max(0, Math.round(lastPlan.tl.stock[k] + (lastPlan.tl.tokenModel ? 0 : lastPlan.tl.items[k])));
+        if (state.rate[k] != null) state.rate[k] = Math.round(lastPlan.tl.rate[k]);
+      }
+      if (lastPlan.tl.tokenModel) {
+        // 屯田令改為路徑完成時的狀態（下一個恢復時間換算回從現在起算）
+        const now = Date.now(), e = lastPlan.tl.hoardEnd, h = state.hoard;
+        h.count = e.held; h.at = now;
+        h.nextAt = e.next == null ? null : now + Math.max(0, e.next - lastPlan.tl.hours) * 3600e3;
+        renderHoardChip();
+      }
+    } else spend(lastPlan.totalCost());
+    sim = new Sim(lastPlan.levels); lastPlan = null;
+    $("planBox").hidden = true; save(); render();
+  });
+  $("closePlan").addEventListener("click", () => { $("planBox").hidden = true; });
+  $("resetBtn").addEventListener("click", () => {
+    sim = new Sim(); state.stock = { Wood: null, Metal: null, Money: null }; state.selected = MAIN;
+    $("planBox").hidden = true; save(); render();
+  });
+
+  // ---------- 截圖辨識 ----------
+  // 參考版面: 1920x1040 視窗截圖（含 22px 標題列），標籤中心座標
+  const REF = { h: 1040, cols: [228, 501, 773, 1057], row0: 194, pitch: 195, lw: 176, lh: 24 };
+  const OCR_SLOTS = [];
+  LAYOUT.forEach((r, ri) => r.bids.forEach((bid, ci) => OCR_SLOTS.push({ bid, ri, ci })));
+  let pending = null, tessWorker = null;
+
+  function pixelType(d, i) {
+    const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (mn > 0x90 && mx - mn < 0x50) return 1;          // 白字
+    if (r > 0x90 && g < 0x60 && b < 0x60) return 2;      // 紅字
+    if (g > 0x90 && r < 0x90) return 3;                  // 綠箭頭
+    return 0;
+  }
+  function integral(w, h, fn) {
+    const I = new Float32Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y++) {
+      let row = 0;
+      for (let x = 0; x < w; x++) {
+        row += fn(x, y);
+        I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + row;
+      }
+    }
+    return (x0, y0, x1, y1) => {
+      x0 = Math.max(0, Math.min(w, Math.round(x0))); x1 = Math.max(0, Math.min(w, Math.round(x1)));
+      y0 = Math.max(0, Math.min(h, Math.round(y0))); y1 = Math.max(0, Math.min(h, Math.round(y1)));
+      if (x1 <= x0 || y1 <= y0) return 0;
+      const W = w + 1;
+      return (I[y1 * W + x1] - I[y0 * W + x1] - I[y1 * W + x0] + I[y0 * W + x0]) / ((x1 - x0) * (y1 - y0));
+    };
+  }
+  // 標籤為近黑色的膠囊，四周是建築圖/背景，內含文字：
+  // 分數 = 框內暗 - 上下左右帶暗 + 文字量（避免整片深色的標題列被誤認）
+  function pillMask(d, i) {
+    return Math.max(d[i], d[i + 1], d[i + 2]) < 0x30 || pixelType(d, i) ? 1 : 0;
+  }
+  function textMask(d, i) {
+    const t = pixelType(d, i);
+    return t === 1 || t === 2 ? 1 : 0;
+  }
+  function labelScore(M, cx, cy, w, h) {
+    const { S, T } = M;
+    if (cx - w * 0.75 < 0 || cx + w * 0.75 > M.w || cy - h * 1.6 < 0 || cy + h * 1.6 > M.h) return -1;
+    const inside = S(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
+    const above = S(cx - w / 2, cy - h * 1.6, cx + w / 2, cy - h);
+    const below = S(cx - w / 2, cy + h, cx + w / 2, cy + h * 1.6);
+    const left = S(cx - w * 0.75, cy - h / 2, cx - w * 0.6, cy + h / 2);
+    const right = S(cx + w * 0.6, cy - h / 2, cx + w * 0.75, cy + h / 2);
+    const text = T(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
+    return inside - 0.5 * (above + below) - 0.5 * (left + right) + (text <= 0.4 ? Math.min(text, 0.2) * 2 : -0.5);
+  }
+  function masks(w, h, d) {
+    return {
+      w, h,
+      S: integral(w, h, (x, y) => pillMask(d, (y * w + x) * 4)),
+      T: integral(w, h, (x, y) => textMask(d, (y * w + x) * 4)),
+    };
+  }
+  function locateGrid(img) {
+    const WH = 520, k = WH / img.height, ww = Math.round(img.width * k);
+    const cv = document.createElement("canvas"); cv.width = ww; cv.height = WH;
+    const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, ww, WH);
+    const d = cx.getImageData(0, 0, ww, WH).data;
+    const S = masks(ww, WH, d);
+    let best = { score: -1 };
+    const evalCfg = (f, ox, oy) => {
+      const sc = img.height / REF.h * f * k;
+      let sum = 0;
+      for (const s of OCR_SLOTS) sum += labelScore(S, ox + REF.cols[s.ci] * sc, oy + (REF.row0 + REF.pitch * s.ri) * sc, REF.lw * sc, REF.lh * sc);
+      return sum / OCR_SLOTS.length;
+    };
+    for (let f = 0.8; f <= 1.2001; f += 0.02) {
+      const sc = img.height / REF.h * f * k;
+      for (let ox = -0.3 * ww; ox <= 0.3 * ww; ox += 2)
+        for (let oy = -200 * sc; oy <= 200 * sc; oy += 2) {
+          const v = evalCfg(f, ox, oy);
+          if (v > best.score) best = { score: v, f, ox, oy };
+        }
+    }
+    for (let f = best.f - 0.02; f <= best.f + 0.02; f += 0.005)
+      for (let ox = best.ox - 2; ox <= best.ox + 2; ox += 0.5)
+        for (let oy = best.oy - 2; oy <= best.oy + 2; oy += 0.5) {
+          const v = evalCfg(f, ox, oy);
+          if (v > best.score) best = { score: v, f, ox, oy };
+        }
+    const scale = img.height / REF.h * best.f;
+    return { score: best.score, scale, ox: best.ox / k, oy: best.oy / k };
+  }
+  function extractLabel(full, S, grid, slot) {
+    const s = grid.scale, w = full.width;
+    let cx = grid.ox + REF.cols[slot.ci] * s, cy = grid.oy + (REF.row0 + REF.pitch * slot.ri) * s;
+    const lw = REF.lw * s, lh = REF.lh * s;
+    // 個別微調位置
+    let bs = -9, bx = cx, by = cy;
+    for (let dx = -8 * s; dx <= 8 * s; dx += 1) for (let dy = -6 * s; dy <= 6 * s; dy += 1) {
+      const v = labelScore(S, cx + dx, cy + dy, lw, lh);
+      if (v > bs) { bs = v; bx = cx + dx; by = cy + dy; }
+    }
+    cx = bx; cy = by;
+    const x0 = Math.round(cx - lw * 0.62), x1 = Math.round(cx + lw * 0.62);
+    const y0 = Math.round(cy - lh * 0.55), y1 = Math.round(cy + lh * 0.55);
+    const d = full.data, cols = [];
+    for (let x = x0; x < x1; x++) {
+      const cnt = [0, 0, 0, 0];
+      for (let y = y0; y < y1; y++) if (x >= 0 && x < w && y >= 0 && y < full.height) cnt[pixelType(d, (y * w + x) * 4)]++;
+      const t = cnt[1] || cnt[2] || cnt[3] ? [1, 2, 3].reduce((a, b) => cnt[b] > cnt[a] ? b : a, 1) : 0;
+      cols.push(t);
+    }
+    const segs = [];
+    let st = -1;
+    for (let i = 0; i <= cols.length; i++) {
+      const t = i < cols.length ? cols[i] : 0;
+      if (t && st < 0) st = i;
+      if (!t && st >= 0) {
+        const part = cols.slice(st, i);
+        const type = [1, 2, 3].reduce((a, b) => part.filter(v => v === b).length > part.filter(v => v === a).length ? b : a, 1);
+        segs.push({ x: st, w: i - st, type });
+        st = -1;
+      }
+    }
+    // 「等級/上限」在最右側（綠色箭頭除外）：數字間距 <= 6px，名稱與數字間距 >= 8px（以 1040 高為準）
+    const cjk = 15 * s, gapMax = 7 * s;
+    const nonG = segs.filter(g => g.type !== 3 && g.w >= Math.max(1, 1.5 * s));
+    if (!nonG.length) return { box: [x0, y0, x1, y1], ok: false };
+    let start = nonG.length - 1;
+    while (start > 0 && nonG[start - 1].w < cjk && nonG[start].x - (nonG[start - 1].x + nonG[start - 1].w) <= gapMax) start--;
+    const num = nonG.slice(start);
+    const nx1 = x0 + num[num.length - 1].x + num[num.length - 1].w;
+    // 備選起點：若辨識結果不合理，依序捨棄最左側片段重試
+    const starts = num.slice(0, Math.min(3, num.length)).map(g => x0 + g.x);
+    const firstRed = num.find(g => g.type === 2);
+    return { box: [x0, y0, x1, y1], ok: true, starts, nx0: starts[0], nx1, y0, y1, red: !!firstRed,
+      redStart: firstRed ? x0 + firstRed.x : null, glyphs: num.map(g => [x0 + g.x, x0 + g.x + g.w]) };
+  }
+  function numberCanvas(full, L) {
+    const pad = 4, W = L.nx1 - L.nx0 + pad * 2, H = L.y1 - L.y0 + pad * 2;
+    const src = document.createElement("canvas"); src.width = W; src.height = H;
+    const sx = src.getContext("2d"); const out = sx.createImageData(W, H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const gx = L.nx0 - pad + x, gy = L.y0 - pad + y, o = (y * W + x) * 4;
+      let v = 255;
+      if (gx >= 0 && gy >= 0 && gx < full.width && gy < full.height) {
+        const t = pixelType(full.data, (gy * full.width + gx) * 4);
+        if (t === 1 || t === 2) v = 0;
+      }
+      out.data[o] = out.data[o + 1] = out.data[o + 2] = v; out.data[o + 3] = 255;
+    }
+    sx.putImageData(out, 0, 0);
+    const k = 72 / H, big = document.createElement("canvas");
+    big.width = Math.round(W * k) + 40; big.height = Math.round(H * k) + 40;
+    const bx = big.getContext("2d"); bx.fillStyle = "#fff"; bx.fillRect(0, 0, big.width, big.height);
+    bx.imageSmoothingEnabled = true; bx.drawImage(src, 20, 20, W * k, H * k);
+    return big;
+  }
+  // ---- 內建數字樣板比對（glyph-data 為從實際截圖擷取的 0-9 與 / 樣板，12x18 覆蓋率）----
+  const GLYPHS = JSON.parse(document.getElementById("glyph-data").textContent);
+  const MATCH_MAX_DIST = 0.3, MATCH_MIN_RATIO = 1.3;
+  function isText(full, x, y) {
+    if (x < 0 || y < 0 || x >= full.width || y >= full.height) return false;
+    const t = pixelType(full.data, (y * full.width + x) * 4);
+    return t === 1 || t === 2;
+  }
+  function glyphFeatures(full, gx0, gx1, y0, y1, test = isText, set = GLYPHS) {
+    const { gw, gh, ss } = set;
+    let by0 = -1, by1 = -1;
+    for (let y = y0; y < y1; y++) {
+      for (let x = gx0; x < gx1; x++) if (test(full, x, y)) { if (by0 < 0) by0 = y; by1 = y + 1; break; }
+    }
+    if (by0 < 0) return null;
+    const bw = gx1 - gx0, bh = by1 - by0, v = [];
+    for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+      let hit = 0;
+      for (let sy = 0; sy < ss; sy++) for (let sx = 0; sx < ss; sx++) {
+        const x = Math.floor(gx0 + (gx + (sx + 0.5) / ss) * bw / gw);
+        const y = Math.floor(by0 + (gy + (sy + 0.5) / ss) * bh / gh);
+        if (test(full, x, y)) hit++;
+      }
+      v.push(hit / (ss * ss));
+    }
+    return { v, a: bw / bh, h: bh / (y1 - y0), y: ((by0 + by1) / 2 - y0) / (y1 - y0) };
+  }
+  function matchGlyph(f, set = GLYPHS) {
+    let best = null, second = null;
+    for (const ch in set.glyphs) {
+      const t = set.glyphs[ch];
+      let d = 0;
+      for (let i = 0; i < f.v.length; i++) d += (f.v[i] - t.v[i]) ** 2;
+      d = d / f.v.length + 0.5 * (f.a - t.a) ** 2;
+      if (t.h != null) d += (f.h - t.h) ** 2 + (f.y - t.y) ** 2;
+      if (!best || d < best.d) { second = best; best = { ch, d }; }
+      else if (!second || d < second.d) second = { ch, d };
+    }
+    return { ch: best.ch, d: best.d, ratio: second ? second.d / Math.max(best.d, 1e-6) : 99 };
+  }
+  // ---- 「資源詳情」畫面：左欄每種資源一張卡片，上行「產量/小時」、下行「庫存萬/上限萬」----
+  // 參考版面 1920x1040（含 22px 標題列），依高度等比縮放；樣板 res-glyph-data 從實際截圖擷取
+  const RES_GLYPHS = JSON.parse(document.getElementById("res-glyph-data").textContent);
+  const RES_SCREEN = { x0: 300, x1: 545, search: 25, rows: { Wood: [425, 475], Metal: [640, 690], Money: [855, 905] } };
+  function isResText(full, x, y) {
+    if (x < 0 || y < 0 || x >= full.width || y >= full.height) return false;
+    const i = (y * full.width + x) * 4, d = full.data;
+    const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]);
+    return mn > 0x80 && mx - mn < 0x40;
+  }
+  function resLine(full, cy, s, ox) {
+    const x0 = Math.round(ox + RES_SCREEN.x0 * s), x1 = Math.round(ox + RES_SCREEN.x1 * s);
+    const rowHas = y => { for (let x = x0; x < x1; x++) if (isResText(full, x, y)) return true; return false; };
+    const bands = [];
+    let cur = null;
+    for (let y = Math.round(cy - RES_SCREEN.search * s); y < Math.round(cy + RES_SCREEN.search * s); y++) {
+      if (!rowHas(y)) continue;
+      if (cur && y - cur[1] > 2) { bands.push(cur); cur = null; }
+      cur = cur ? [cur[0], y] : [y, y];
+    }
+    if (cur) bands.push(cur);
+    const ok = bands.filter(b => b[1] - b[0] + 1 >= 8 * s);
+    if (!ok.length) return null;
+    const [b0, b1] = ok.reduce((a, b) => Math.abs((b[0] + b[1]) / 2 - cy) < Math.abs((a[0] + a[1]) / 2 - cy) ? b : a);
+    const y0 = b0, y1 = b1 + 1, segs = [];
+    let st = -1;
+    for (let x = x0; x <= x1; x++) {
+      let has = false;
+      if (x < x1) for (let y = y0; y < y1; y++) if (isResText(full, x, y)) { has = true; break; }
+      if (has && st < 0) st = x;
+      if (!has && st >= 0) { segs.push([st, x]); st = -1; }
+    }
+    return { y0, y1, segs, box: [x0, y0, x1, y1] };
+  }
+  // kind = "rate"：數字後接空白與「/小時」；kind = "stock"：數字後接「萬」或「/」
+  function readResLine(full, cy, s, ox, kind) {
+    const L = resLine(full, cy, s, ox);
+    if (!L || !L.segs.length) return null;
+    const match = (a, b) => {
+      const f = glyphFeatures(full, a, b, L.y0, L.y1, isResText, RES_GLYPHS);
+      if (!f) return null;
+      const m = matchGlyph(f, RES_GLYPHS);
+      // 「/」不會出現在開頭或小數點後；窄的斜體「1」容易被誤認為「/」，此時改取最像的數字
+      if (m.ch === "/" && (text === "" || text.endsWith("."))) {
+        const digits = { ...RES_GLYPHS, glyphs: Object.fromEntries(Object.entries(RES_GLYPHS.glyphs).filter(([c]) => /^\d$/.test(c))) };
+        return matchGlyph(f, digits);
+      }
+      return m;
+    };
+    const colCount = x => { let c = 0; for (let y = L.y0; y < L.y1; y++) if (isResText(full, x, y)) c++; return c; };
+    const isDigit = m => m && /^\d$/.test(m.ch);
+    let text = "", sure = true, unit = 1, done = false;
+    for (let i = 0; i < L.segs.length && !done; i++) {
+      const [a, b] = L.segs[i];
+      // 產量行：數字與「/小時」之間的空白（7px 以上；窄的「1」之間可達 6px）。庫存行改由「萬」或「/」判斷結尾（小數點後也可能有 7px 空白）
+      if (kind === "rate" && i && a - L.segs[i - 1][1] > 6.5 * s) break;
+      let parts;
+      if (b - a >= 15 * s) {
+        // 寬的區塊可能是「萬」，也可能是兩個黏在一起的數字（例如 72）：從中間最細的欄切開，取比對較好的解讀
+        const whole = match(a, b);
+        let cut = -1, thin = Infinity;
+        for (let x = Math.round(a + (b - a) * 0.3); x <= Math.round(a + (b - a) * 0.7); x++) {
+          const c = colCount(x);
+          if (c < thin) { thin = c; cut = x; }
+        }
+        const m1 = match(a, cut), m2 = match(cut + 1, b);
+        const splitOk = isDigit(m1) && isDigit(m2);
+        if (whole && whole.ch === "萬" && (!splitOk || whole.d <= (m1.d + m2.d) / 2)) parts = [whole];
+        else if (splitOk) parts = [m1, m2];
+        else parts = [whole];
+      } else parts = [match(a, b)];
+      for (const m of parts) {
+        if (!m) return null;
+        if (m.ch === "萬") { if (kind === "stock") unit = 10000; done = true; break; }
+        if (m.ch === "/") { done = true; break; }
+        text += m.ch;
+        if (m.d > MATCH_MAX_DIST || m.ratio < MATCH_MIN_RATIO) sure = false;
+      }
+    }
+    const ok = kind === "rate" ? /^\d+$/.test(text) : /^\d+(\.\d+)?$/.test(text);
+    return { text, value: ok ? Math.round(parseFloat(text) * unit) : null, sure: ok && sure, unit, box: L.box };
+  }
+  function readResScreen(full) {
+    const s = full.height / 1040, ox0 = (full.width - 1920 * s) / 2;
+    let best = null;
+    for (const ox of [0, ox0]) {            // 靠左或置中兩種對齊方式
+      const rows = {};
+      let good = 0;
+      for (const k in RES_SCREEN.rows) {
+        const [ry, sy] = RES_SCREEN.rows[k];
+        const rate = readResLine(full, ry * s, s, ox, "rate"), stock = readResLine(full, sy * s, s, ox, "stock");
+        rows[k] = { rate, stock };
+        if (rate && rate.value != null && stock && stock.value != null) good++;
+      }
+      if (!best || good > best.good) best = { good, rows };
+    }
+    return best.good >= 2 ? best.rows : null;
+  }
+  function showResResult(rows, ctx, scale) {
+    const status = $("ocrStatus");
+    ctx.lineWidth = Math.max(2, 3 * scale);
+    $("ocrGrid").innerHTML = "";
+    let unsure = 0;
+    for (const k of RES) {
+      const { rate, stock } = rows[k];
+      for (const r of [rate, stock]) if (r) { ctx.strokeStyle = r.sure ? "#e6c27a" : "#ef4b3f"; const [x0, y0, x1, y1] = r.box; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0); }
+      const okAll = rate && stock && rate.sure && stock.sure;
+      if (!okAll) unsure++;
+      const item = document.createElement("div");
+      item.className = "ocr-item" + (okAll ? "" : " warnc");
+      item.innerHTML = `<span class="n">${RES_NAME[k]}</span><span></span>
+        <span>庫存 <input data-res-stock="${k}" value="${stock && stock.value != null ? toWan(stock.value) : ""}"> 萬</span>
+        <span>產量 <input data-res-rate="${k}" value="${rate && rate.value != null ? toWan(rate.value) : ""}"> 萬/時</span>
+        <span class="s">比對「${stock ? stock.text + (stock.unit > 1 ? "萬" : "") : "?"}」「${rate ? rate.text : "?"}/小時」${okAll ? "" : " · 不確定"}</span>`;
+      $("ocrGrid").appendChild(item);
+    }
+    pending = { mode: "res", labels: [] };
+    renderEngine();
+    $("ocrApply").disabled = false;
+    status.textContent = unsure ? `資源詳情：${unsure} 項不確定（紅框），請確認後套用。` : "資源詳情：辨識完成，確認後套用。";
+  }
+
+  // 回傳 { lev, text, sure }；字首可能混入名稱殘片，依序捨棄最左側字元重試
+  function templateMatch(full, L, maxLev) {
+    let glyphs = L.glyphs;
+    if (L.redStart != null) glyphs = glyphs.filter(g => g[0] >= L.redStart);
+    const m = glyphs.map(([a, b]) => { const f = glyphFeatures(full, a, b, L.y0, L.y1); return f ? matchGlyph(f) : null; });
+    let fallback = null;
+    for (let k = 0; k < Math.min(3, m.length); k++) {
+      const part = m.slice(k);
+      if (part.some(x => !x)) continue;
+      const text = part.map(x => x.ch).join("");
+      const lev = parseLevel(text, maxLev);
+      const sure = part.every(x => x.d <= MATCH_MAX_DIST && x.ratio >= MATCH_MIN_RATIO);
+      if (lev != null) return { lev, text, sure };
+      if (!fallback) fallback = { lev: null, text, sure: false };
+    }
+    return fallback || { lev: null, text: "", sure: false };
+  }
+
+  // ---- 辨識引擎（備援）：樣板比對不確定時，使用者同意後才非同步下載（約 4 MB，之後由瀏覽器快取）----
+  const CONSENT_KEY = "build_sim_ocr_consent";
+  const ENGINE_SIZE = "約 4 MB";
+  const engine = { state: "idle", progress: 0, error: "", promise: null };   // idle | manual | loading | ready | error
+  const ENGINE_STEP = {
+    "loading tesseract core": "下載辨識核心", "initializing tesseract": "初始化",
+    "loading language traineddata": "下載數字模型", "initializing api": "初始化",
+  };
+  // 只有在樣板比對有不確定的項目時才顯示引擎提示列
+  function renderEngine() {
+    const bar = $("engineBar");
+    const unsure = pending ? pending.labels.filter(L => L.needOcr).length : 0;
+    bar.hidden = !unsure && engine.state !== "loading";
+    bar.className = "engine " + engine.state;
+    if (engine.state === "idle" || engine.state === "manual") {
+      bar.innerHTML = `<span class="msg">${unsure} 項無法確定（紅框）。可手動修正，或下載備援的文字辨識引擎（${ENGINE_SIZE}，只下載一次，之後由瀏覽器快取）再試。</span>
+        <button class="btn gold" data-engine="load">下載辨識引擎</button>
+        ${engine.state === "idle" ? '<button class="btn" data-engine="manual">手動修正</button>' : ""}`;
+    } else if (engine.state === "loading") {
+      bar.innerHTML = `<span class="msg">${esc(engine.step || "下載辨識引擎")}… ${Math.round(engine.progress * 100)}%（完成後自動重新辨識紅框項目）</span>
+        <span class="prog"><i style="width:${engine.progress * 100}%"></i></span>`;
+    } else if (engine.state === "ready") {
+      bar.innerHTML = `<span class="msg">辨識引擎已就緒。</span>`;
+    } else {
+      bar.innerHTML = `<span class="msg">辨識引擎下載失敗：${esc(engine.error)}。仍可手動輸入等級。</span>
+        <button class="btn" data-engine="load">重試</button>`;
+    }
+  }
+  function loadScript(src) {
+    if (window.Tesseract) return Promise.resolve();
+    return new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = src; s.async = true;
+      s.onload = res; s.onerror = () => { s.remove(); rej(new Error("無法連線到 jsdelivr")); };
+      document.head.appendChild(s);
+    });
+  }
+  function loadEngine() {
+    if (engine.promise) return engine.promise;
+    try { localStorage.setItem(CONSENT_KEY, "1"); } catch (e) {}
+    Object.assign(engine, { state: "loading", progress: 0, step: "", error: "" });
+    renderEngine();
+    engine.promise = (async () => {
+      await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+      const worker = await Tesseract.createWorker("eng", 1, {
+        logger: m => {
+          if (engine.state !== "loading") return;
+          engine.step = ENGINE_STEP[m.status] || m.status;
+          engine.progress = m.progress || 0;
+          renderEngine();
+        },
+      });
+      await worker.setParameters({ tessedit_char_whitelist: "0123456789/", tessedit_pageseg_mode: "7" });
+      tessWorker = worker;
+      engine.state = "ready"; renderEngine();
+      if (pending) recognizeAll(pending);
+      return worker;
+    })().catch(e => {
+      Object.assign(engine, { state: "error", error: e.message || String(e), promise: null });
+      renderEngine();
+      if (pending) $("ocrStatus").textContent = "請手動輸入各建築等級。";
+      throw e;
+    });
+    return engine.promise;
+  }
+  function hasConsent() {
+    try { return localStorage.getItem(CONSENT_KEY) === "1"; } catch (e) { return false; }
+  }
+  function parseLevel(text, maxLev) {
+    const t = text.replace(/[^0-9/]/g, "");
+    let m = t.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (m && +m[2] === maxLev && +m[1] <= maxLev) return +m[1];
+    const ms = String(maxLev);
+    if (t.endsWith(ms)) {   // 斜線被誤認為 1 或 7 的情況
+      const head = t.slice(0, -ms.length).replace(/\/$/, "");
+      for (const cand of [head, head.replace(/[17]$/, "")]) if (/^\d{1,2}$/.test(cand) && +cand <= maxLev) return +cand;
+    }
+    return null;
+  }
+  // 依紅字（條件不足）/白字（可升級）推估君主殿等級範圍
+  function inferMainRange(levels, reds) {
+    let lo = 1, hi = builds[MAIN].maxLev;
+    for (const s of OCR_SLOTS) {
+      const lev = levels[s.bid], b = builds[s.bid];
+      if (lev == null || lev >= b.maxLev) continue;
+      const lim = b.levels[lev + 1].UpgradeLimit || [];
+      const mainReq = (lim.find(r => r.bid === MAIN) || {}).lev || 0;
+      const othersOk = lim.every(r => r.bid === MAIN || (levels[r.bid] ?? builds[r.bid].initLev) >= r.lev);
+      if (!reds[s.bid]) lo = Math.max(lo, mainReq);
+      else if (othersOk && mainReq) hi = Math.min(hi, mainReq - 1);
+    }
+    return [lo, hi];
+  }
+  // ---- 記憶最後一張截圖（IndexedDB，依模式分開保存），再次開啟時自動帶出方便對照 ----
+  function shotDb() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open("build_sim", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("shots");
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+  }
+  async function saveShot(mode, blob) {
+    try { const db = await shotDb(); db.transaction("shots", "readwrite").objectStore("shots").put({ blob, time: Date.now() }, mode); } catch (e) {}
+  }
+  async function loadShot(mode) {
+    try {
+      const db = await shotDb();
+      return await new Promise(res => { const q = db.transaction("shots").objectStore("shots").get(mode); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); });
+    } catch (e) { return null; }
+  }
+  const parkMainInput = () => $("ocrMainWrap").append($("ocrMain"));   // 君主殿輸入框平時收在頁尾（隱藏）
+  let ocrRunId = 0;
+  async function runOcr(file, restoredAt) {
+    const runId = ++ocrRunId;
+    const status = $("ocrStatus");
+    parkMainInput();
+    $("ocrApply").disabled = true; $("ocrGrid").innerHTML = ""; $("ocrGrid").className = "ocr-grid"; $("ocrHint").textContent = "";
+    pending = null;
+    status.textContent = "讀取圖片…";
+    const img = await createImageBitmap(file);
+    if (runId !== ocrRunId) return;                     // 期間又貼上了新截圖
+    const restoredNote = restoredAt ? `上次的截圖（${new Date(restoredAt).toLocaleString()}）：` : "";
+    const cv = $("ocrCanvas"); cv.width = img.width; cv.height = img.height; cv.style.display = "block";
+    const ctx = cv.getContext("2d", { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
+    const full = ctx.getImageData(0, 0, img.width, img.height);
+    if (ocrMode !== "build") {
+      const resRows = readResScreen(full);
+      if (resRows) {
+        if (ocrMode === "auto") setOcrMode("res");
+        showResResult(resRows, ctx, img.height / 1040);
+        if (restoredAt) status.textContent = restoredNote + status.textContent; else saveShot("res", file);
+        return;
+      }
+      if (ocrMode === "res") { status.textContent = "找不到資源詳情的版面，請確認截圖是「資源詳情」畫面。"; return; }
+      setOcrMode("build");
+    }
+    status.textContent = "定位建築標籤…";
+    await new Promise(r => setTimeout(r, 20));
+    const grid = locateGrid(img);
+    if (grid.score < 0.25) {
+      status.textContent = readResScreen(full)
+        ? "這張是「資源詳情」畫面，請改用「辨識資源」。"
+        : "找不到建造總覽的版面：請點選「建造總覽」並拖動到最底部後再截圖。";
+      return;
+    }
+    const S = masks(full.width, full.height, full.data);
+    const labels = OCR_SLOTS.map(s => Object.assign({ slot: s }, extractLabel(full, S, grid, s)));
+    ctx.lineWidth = Math.max(2, 3 * grid.scale);
+    for (const L of labels) {
+      ctx.strokeStyle = L.ok ? "#e6c27a" : "#ef4b3f";
+      const [x0, y0, x1, y1] = L.box; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    }
+    if (!restoredAt) saveShot("build", file);
+    // 以內建樣板比對填入；不確定的項目標紅框，可手動修正或交給備援引擎。排列與建築總覽相同
+    const gridEl = $("ocrGrid");
+    gridEl.innerHTML = ""; gridEl.className = "ocr-grid ocr-tiers";
+    const topRow = document.createElement("div");
+    topRow.className = "ocr-row top";
+    topRow.innerHTML = `<div class="ocr-item main"><div class="pill"><span class="n">${esc(builds[MAIN].name)}</span><span class="lv" id="ocrMainSlot"></span></div>
+      <span class="s">請輸入君主殿等級</span></div>`;
+    gridEl.appendChild(topRow);
+    $("ocrMainSlot").append($("ocrMain"), ` / ${builds[MAIN].maxLev}`);
+    const rowEls = LAYOUT.map(r => {
+      const row = document.createElement("div");
+      row.className = "ocr-row";
+      row.innerHTML = `<div class="tier-mark"><span><b>${r.tier}</b></span></div>`;
+      gridEl.appendChild(row);
+      return row;
+    });
+    for (const L of labels) {
+      const b = builds[L.slot.bid];
+      const item = document.createElement("div"); item.className = "ocr-item";
+      item.style.gridColumn = L.slot.ci + 1;
+      item.innerHTML = `<div class="pill"><span class="n">${esc(b.name)}</span><span class="lv"><input type="number" min="0" max="${b.maxLev}" data-ocr="${L.slot.bid}"> / ${b.maxLev}</span></div>
+        <span class="s">${L.ok ? (L.red ? "紅字" : "") : "找不到標籤"}</span>`;
+      if (L.ok) {
+        // 紅字一定是等級的第一位數，優先從紅字開始
+        L.tryStarts = L.redStart != null ? [L.redStart] : L.starts;
+        L.crop = numberCanvas(full, Object.assign({}, L, { nx0: L.tryStarts[0] }));
+        L.crop.title = "辨識用的裁切影像";
+        item.insertBefore(L.crop, item.firstChild);
+        const r = templateMatch(full, L, b.maxLev);
+        if (r.lev != null) { const inp = item.querySelector("input"); inp.value = r.lev; inp.dataset.auto = r.lev; }
+        L.needOcr = !r.sure || r.lev == null;
+        item.querySelector(".s").textContent = `比對「${r.text || "?"}」${r.sure ? "" : " · 不確定"}${L.red ? " · 紅字" : ""}`;
+      } else L.needOcr = true;
+      item.classList.toggle("warnc", L.needOcr);
+      L.item = item;
+      rowEls[L.slot.ri].appendChild(item);
+    }
+    $("ocrApply").disabled = false;
+    pending = { full, labels };
+    updateHint();
+    const unsure = labels.filter(L => L.needOcr).length;
+    renderEngine();
+    if (!unsure) status.textContent = restoredNote + "完成，請確認君主殿等級後套用。";
+    else if (engine.state === "ready") recognizeAll(pending);
+    else if (engine.state === "loading") status.textContent = restoredNote + `${unsure} 項不確定，等待辨識引擎下載完成…`;
+    else if (engine.state === "idle" && hasConsent()) loadEngine().catch(() => {});
+    else status.textContent = restoredNote + `${unsure} 項需手動確認（紅框）。`;
+  }
+  async function recognizeAll(job) {
+    if (job.running || job.done) return;
+    job.running = true;
+    const status = $("ocrStatus");
+    let miss = 0;
+    for (const [i, L] of job.labels.entries()) {
+      if (pending !== job) return;   // 已換成新截圖
+      if (!L.needOcr) continue;
+      if (!L.ok) { miss++; continue; }
+      const b = builds[L.slot.bid], inp = L.item.querySelector("input");
+      status.textContent = `辨識中 ${i + 1}/${job.labels.length}…`;
+      let lev = null, conf = 0, raw = "", crop = L.crop;
+      for (const nx0 of L.tryStarts) {
+        const c = numberCanvas(job.full, Object.assign({}, L, { nx0 }));
+        const r = await tessWorker.recognize(c);
+        const v = parseLevel(r.data.text.trim(), b.maxLev);
+        if (raw === "" || v != null) { raw = r.data.text.trim(); conf = Math.round(r.data.confidence); crop = c; }
+        if (v != null) { lev = v; break; }
+      }
+      if (crop !== L.crop) { crop.title = L.crop.title; L.crop.replaceWith(crop); L.crop = crop; }
+      // 不覆蓋使用者手動改過的值（樣板比對填入的值可被覆蓋）
+      if (lev != null && (inp.value === "" || inp.dataset.auto === inp.value)) inp.value = lev;
+      L.needOcr = lev == null || conf < 60;
+      L.item.classList.toggle("warnc", L.needOcr);
+      L.item.querySelector(".s").textContent = `辨識「${raw || "?"}」 信心 ${conf}${L.red ? " · 紅字" : ""}`;
+      if (lev == null) miss++;
+    }
+    job.done = true; job.running = false;
+    updateHint(); renderEngine();
+    status.textContent = miss ? `完成，${miss} 項需手動確認（紅框）。` : "完成，請確認君主殿等級後套用。";
+  }
+  function updateHint() {
+    if (!pending) return;
+    const levels = {}, reds = {};
+    for (const L of pending.labels) {
+      const v = L.item.querySelector("input").value;
+      if (v !== "") levels[L.slot.bid] = +v;
+      if (L.ok) reds[L.slot.bid] = L.red;
+    }
+    if (!Object.keys(levels).length) { $("ocrHint").textContent = ""; return; }
+    const [lo, hi] = inferMainRange(levels, reds);
+    const mainInp = $("ocrMain");
+    if (!mainInp.value && lo === hi) mainInp.value = lo;
+    $("ocrHint").innerHTML = lo <= hi ? `依紅/白字推估君主殿為 <b>Lv${lo}${lo === hi ? "" : "–" + hi}</b>` : `<span class="bad">紅/白字與等級不一致，請檢查辨識結果</span>`;
+  }
+  function applyOcr() {
+    if (pending && pending.mode === "res") {
+      for (const k of RES) {
+        const st = $("ocrGrid").querySelector(`[data-res-stock="${k}"]`), rt = $("ocrGrid").querySelector(`[data-res-rate="${k}"]`);
+        state.stock[k] = parseWan(st.value); state.rate[k] = parseWan(rt.value);
+      }
+      state.stockAt = Date.now();
+      save(); render(); $("ocrDlg").close();
+      return;
+    }
+    const main = +$("ocrMain").value;
+    if (!main || main < 1 || main > builds[MAIN].maxLev) { $("ocrStatus").textContent = "請輸入君主殿等級（1–18）。"; $("ocrMain").focus(); return; }
+    const lv = { [MAIN]: main };
+    for (const inp of $("ocrGrid").querySelectorAll("[data-ocr]")) {
+      if (inp.value === "") { $("ocrStatus").textContent = "還有建築等級未填。"; inp.focus(); return; }
+      lv[+inp.dataset.ocr] = Math.max(0, Math.min(builds[+inp.dataset.ocr].maxLev, Math.round(+inp.value)));
+    }
+    // 未出現在總覽中的單級建築：依君主殿等級判斷是否已解鎖
+    for (const bid of OTHERS) {
+      if (bid === MAIN) continue;
+      const b = builds[bid];
+      const req = b.levels[1] && (b.levels[1].UpgradeLimit || []).find(r => r.bid === MAIN);
+      lv[bid] = Math.max(b.initLev, !req || main >= req.lev ? b.maxLev : 0);
+    }
+    sim = new Sim(lv); state.selected = MAIN; save(); render();
+    $("ocrDlg").close();
+  }
+
+  const dlg = $("ocrDlg"), drop = $("drop");
+  // 辨識模式：build = 建造總覽（建築等級）、res = 資源詳情（庫存與產量）、auto = 直接貼上時自動判斷
+  const OCR_GUIDE = {
+    build: {
+      title: "辨識建築",
+      steps: ["在遊戲中點選<b>「建造總覽」</b>。", "把建築列表<b>拖動到最底部</b>（看得到 8 階的民居、錢莊、軍事府）。",
+        "截圖後在這裡貼上（Ctrl+V）、拖曳或選擇圖片。"],
+      note: "自動辨識各建築等級，只需要確認君主殿等級。",
+      img: "build_sim_assets/example_build.webp", caption: "範例：拖動到最底部的建造總覽",
+    },
+    res: {
+      title: "辨識資源",
+      steps: ["在遊戲中開啟<b>「資源詳情」</b>畫面（左側列出糧草、木材、石料、銅幣）。",
+        "截圖後在這裡貼上（Ctrl+V）、拖曳或選擇圖片。"],
+      note: "自動填入木材、石料、銅幣的目前庫存與每小時產量。",
+      img: "build_sim_assets/example_res.webp", caption: "範例：資源詳情畫面",
+    },
+  };
+  let ocrMode = "build";
+  function setOcrMode(mode) {
+    ocrMode = mode;
+    const g = OCR_GUIDE[mode === "res" ? "res" : "build"];
+    $("ocrTitle").textContent = mode === "auto" ? "截圖辨識" : g.title;
+    $("ocrGuide").innerHTML = mode === "auto" ? "" : `<div><ol>${g.steps.map(t => `<li>${t}</li>`).join("")}</ol>
+      <div class="note">${g.note}圖片只在你的瀏覽器裡處理，不會上傳。</div></div>
+      <figure><a href="${g.img}" target="_blank" rel="noopener"><img src="${g.img}" alt="${g.caption}" loading="lazy"></a>
+      <figcaption>${g.caption}（點圖放大）</figcaption></figure>`;
+    $("ocrMainWrap").hidden = true;   // 君主殿等級改在辨識結果的最上方輸入
+  }
+  function openOcr(mode) {
+    setOcrMode(mode);
+    pending = null;
+    parkMainInput();
+    $("ocrGrid").innerHTML = ""; $("ocrGrid").className = "ocr-grid"; $("ocrHint").textContent = ""; $("ocrStatus").textContent = "";
+    $("ocrCanvas").style.display = "none"; $("ocrApply").disabled = true;
+    if (!dlg.open) dlg.showModal();
+    renderEngine();
+    if (mode === "build" || mode === "res") {
+      const runId = ocrRunId;
+      loadShot(mode).then(shot => { if (shot && runId === ocrRunId && dlg.open && ocrMode === mode) runOcr(shot.blob, shot.time); });
+    }
+  }
+  document.querySelectorAll("[data-ocr-mode]").forEach(b => b.addEventListener("click", () => openOcr(b.dataset.ocrMode)));
+  $("engineBar").addEventListener("click", e => {
+    const a = e.target.closest("[data-engine]");
+    if (!a) return;
+    if (a.dataset.engine === "load") loadEngine().catch(() => {});
+    else { engine.state = "manual"; renderEngine(); }
+  });
+  $("ocrGrid").addEventListener("change", updateHint);
+  $("ocrClose").addEventListener("click", () => dlg.close());
+  $("ocrApply").addEventListener("click", applyOcr);
+  $("ocrFile").addEventListener("change", e => { if (e.target.files[0]) runOcr(e.target.files[0]); e.target.value = ""; });
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("hover"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("hover"));
+  drop.addEventListener("drop", e => {
+    e.preventDefault(); drop.classList.remove("hover");
+    const f = [...e.dataTransfer.files].find(f => f.type.startsWith("image/")); if (f) runOcr(f);
+  });
+  document.addEventListener("paste", e => {
+    const f = [...(e.clipboardData || {}).items || []].find(i => i.type.startsWith("image/"));
+    if (!f) return;
+    if (!dlg.open) openOcr("auto");
+    runOcr(f.getAsFile());
+  });
+  // ---------- Debug：目前設定與最近一次規劃的逐步計算 ----------
+  function debugData() {
+    const plan = lastDebugPlan;
+    return {
+      time: new Date().toISOString(),
+      settings: {
+        calcMode: state.calcMode, selected: state.selected,
+        levels: Object.fromEntries(bids.map(b => [b, { name: builds[b].name, lev: sim.levels[b] }])),
+        stock: state.stock, rate: state.rate, priority: state.priority,
+        hoard: { ...state.hoard, now: hoardNow(), yield: hoardYield() },
+        clout: sim.clout(),
+      },
+      plan: plan && {
+        building: builds[plan.bid].name, bid: plan.bid, target: plan.target, error: plan.err,
+        hours: plan.tl && plan.tl.hours, items: plan.tl && plan.tl.items,
+        itemsAtStep: plan.tl && Object.fromEntries(RES.map(k => [k, plan.tl.lowAt[k] + 1])),
+        finalStock: plan.tl && plan.tl.stock, finalRate: plan.tl && plan.tl.rate,
+        steps: plan.steps.map((s, i) => ({
+          n: i + 1, bid: s.bid, name: s.name, lev: s.lev, reason: s.reason, cost: s.cost, clout: s.clout,
+          ...(plan.tl ? { wait: plan.tl.trace[i].wait, t: plan.tl.trace[i].t, stockAfter: plan.tl.trace[i].stock, rateAfter: plan.tl.trace[i].rate } : {}),
+        })),
+      },
+    };
+  }
+  // 輸出到瀏覽器主控台（F12）：載入時印出目前設定，每次計算路徑時印出設定與逐步明細
+  const LOG_STYLE = "color:#e6c27a;font-weight:bold";
+  const r2 = x => isFinite(x) ? Math.round(x * 100) / 100 : "∞";
+  function logSettings(reason) {
+    const d = debugData().settings;
+    console.groupCollapsed(`%c[建築模擬器] 目前設定（${reason}）`, LOG_STYLE);
+    console.log("計算方式：", CALC_NAME[d.calcMode], "｜總繁榮度：", d.clout, "｜選取：", builds[d.selected].name);
+    console.table(Object.fromEntries(RES.map(k => [RES_NAME[k], { 庫存: d.stock[k], 每小時: d.rate[k] }])));
+    console.table(Object.fromEntries(bids.map(b => [b, { 建築: builds[b].name, 等級: sim.levels[b], 優先權重: prioOf(b) }])));
+    console.log("JSON：", JSON.stringify(d));
+    console.groupEnd();
+  }
+  function logPlan() {
+    const plan = lastDebugPlan;
+    if (!plan) return;
+    const tl = plan.tl;
+    logSettings("計算路徑");
+    console.groupCollapsed(`%c[建築模擬器] 路徑：${builds[plan.bid].name} → Lv${plan.target}（${plan.steps.length} 步${tl ? `，${r2(tl.hours)} 時` : ""}）`, LOG_STYLE);
+    if (plan.err) console.warn("規劃中斷：", plan.err);
+    if (tl) {
+      if (tl.tokenModel) console.log("屯田次數：", tl.tokensUsed, "｜購買：", tl.bought, "｜完成時屯田令：", tl.hoardEnd);
+      else console.log("需用屯田令：", tl.items, "｜發生於第幾步：", Object.fromEntries(RES.map(k => [k, tl.lowAt[k] + 1])));
+      console.log("完成時庫存（未含屯田令）：", tl.stock, "｜完成時產量：", tl.rate);
+    }
+    console.table(plan.steps.map((st, i) => {
+      const row = { 建築: st.name, Lv: st.lev, 原因: st.reason, 消耗木: st.cost.Wood, 消耗石: st.cost.Metal, 消耗錢: st.cost.Money, 繁榮度: st.clout };
+      const tr = tl && tl.trace[i];
+      if (tr) Object.assign(row, { 等待時: r2(tr.wait), 累計時: r2(tr.t),
+        剩木: tr.stock && Math.round(tr.stock.Wood), 剩石: tr.stock && Math.round(tr.stock.Metal), 剩錢: tr.stock && Math.round(tr.stock.Money),
+        產木: tr.rate && tr.rate.Wood, 產石: tr.rate && tr.rate.Metal, 產錢: tr.rate && tr.rate.Money,
+        屯田: tr.hoard ? RES.filter(k => tr.hoard[k]).map(k => `${RES_NAME[k]}×${tr.hoard[k]}`).join(" ") : "" });
+      return row;
+    }));
+    console.log("完整資料：buildSim.dump() 會回傳 JSON 並複製到剪貼簿");
+    console.groupEnd();
+  }
+  // 主控台指令：buildSim.dump() 取得目前設定與最近一次規劃的 JSON（並嘗試複製到剪貼簿）
+  window.buildSim = {
+    settings: () => debugData().settings,
+    plan: () => debugData().plan,
+    dump() {
+      const text = JSON.stringify(debugData(), null, 1);
+      try { navigator.clipboard.writeText(text).catch(() => {}); } catch (e) {}
+      return text;
+    },
+    log: () => { logSettings("手動"); logPlan(); },
+  };
+  function parseClock(s) {
+    const m = String(s || "").trim().match(/^(\d+)(?::(\d{1,2}))?(?::(\d{1,2}))?$/);
+    if (!m) return null;
+    return ((+m[1]) * 3600 + (+(m[2] || 0)) * 60 + (+(m[3] || 0))) * 1000;
+  }
+  function hoardPreview() {
+    const lv = Math.max(0, Math.min(15, Math.round(+$("hdLv").value || 0)));
+    const union = +$("hdUnion").value || 0;
+    $("hdPreview").innerHTML = `每次屯田可得：<b>${fmt(Math.round(RES_GROUND_OUTPUT[lv] * HOARD.hours * (1 + union / 100)))}</b>（木材、石料、銅錢皆同，屯田前轉換資源點類型即可）
+      <br><span style="color:var(--muted)">＝ 資源點每小時產量 × 24 小時 × (1 + 聯盟科技屯田加成)。屯田令上限 10 個，每 3 小時恢復 1 個。</span>`;
+  }
+  $("hoardOpen").addEventListener("click", () => {
+    const h = state.hoard, cur = hoardNow();
+    $("hdCount").value = cur ? cur.count : "";
+    $("hdNext").value = cur && cur.next != null ? fmtClock(cur.next - Date.now()) : "";
+    $("hdNext").dataset.orig = $("hdNext").value;   // 未修改時儲存會沿用原本精確的恢復時間戳
+    $("hdCount").dataset.orig = $("hdCount").value;
+    $("hdBuy").checked = !!h.buy;
+    $("hdBought").checked = h.boughtDay === dayIndex(Date.now());
+    $("hdLv").value = h.lv || 0;
+    $("hdUnion").value = h.union || 0;
+    hoardPreview();
+    $("hoardDlg").showModal();
+  });
+  $("hoardDlg").addEventListener("input", hoardPreview);
+  $("hdClose").addEventListener("click", () => $("hoardDlg").close());
+  $("hdSave").addEventListener("click", () => {
+    const now = Date.now(), h = state.hoard;
+    const cnt = $("hdCount").value === "" ? null : Math.max(0, Math.min(HOARD.cap, Math.round(+$("hdCount").value)));
+    const rem = parseClock($("hdNext").value), cur = hoardNow(now);
+    // 恢復時間沿用絕對時間戳：欄位未修改就保留原值（避免每次儲存都因四捨五入而提早）
+    const keepNext = cur && cur.next != null && $("hdNext").value === $("hdNext").dataset.orig;
+    h.count = cnt; h.at = now;
+    h.nextAt = cnt == null || cnt >= HOARD.cap ? null
+      : keepNext ? cur.next
+      : now + (rem != null ? Math.min(rem, HOARD.recoverMs) : HOARD.recoverMs);
+    h.buy = $("hdBuy").checked;
+    h.boughtDay = $("hdBought").checked ? dayIndex(now) : null;
+    h.lv = Math.max(0, Math.min(15, Math.round(+$("hdLv").value || 0)));
+    h.union = Math.max(0, +$("hdUnion").value || 0);
+    save(); renderHoardChip(); $("hoardDlg").close();
+    if (!$("planBox").hidden && lastPlanArgs) runPlan(...lastPlanArgs);
+  });
+  renderHoardChip();
+  setInterval(() => {
+    renderHoardChip();
+    if (settleStock()) { save(); refreshEconomy(); }
+  }, 1000);
+  logSettings("載入");
+  console.log("%c[建築模擬器] 主控台指令：buildSim.dump()、buildSim.settings()、buildSim.plan()、buildSim.log()", LOG_STYLE);
+  window.__buildSim = { runOcr, locateGrid, engine, debugData, shareUrl, packShare, unpackShare, sharePayload };
+
+  render();
+  checkShareLink();
+})();
+</script>
+</body>
+</html>
