@@ -215,6 +215,12 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
 .ocr-item .n { font-weight: 600; }
 .ocr-item .s { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
 .ocr-tiers { display: block; position: relative; padding-left: 46px; }
+/* 空間不夠時維持遊戲內的排列，讓使用者左右拖曳查看 */
+.ocr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 720px) {
+  .ocr-grid.ocr-tiers { min-width: 640px; }
+  dialog { width: calc(100vw - 16px); max-width: none; padding: 12px; }
+}
 .ocr-tiers::before { content: ""; position: absolute; left: 20px; top: 12px; bottom: 12px; width: 3px;
   background: linear-gradient(var(--gold-deep), var(--gold), var(--gold-deep)); border-radius: 2px; }
 .ocr-row { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
@@ -314,7 +320,7 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
   <div class="engine" id="engineBar" hidden></div>
   <label class="drop" id="drop">點此選擇圖片，或把截圖拖曳 / 貼上到這裡<input type="file" id="ocrFile" accept="image/*" hidden></label>
   <canvas id="ocrCanvas"></canvas>
-  <div class="ocr-grid" id="ocrGrid"></div>
+  <div class="ocr-scroll"><div class="ocr-grid" id="ocrGrid"></div></div>
   <div class="ocr-foot">
     <label id="ocrMainWrap">君主殿等級 <input type="number" id="ocrMain" min="1" max="18"></label>
     <span id="ocrHint" style="font-size:13px"></span>
@@ -1166,7 +1172,7 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
   const REF = { h: 1040, cols: [228, 501, 773, 1057], row0: 194, pitch: 195, lw: 176, lh: 24 };
   const OCR_SLOTS = [];
   LAYOUT.forEach((r, ri) => r.bids.forEach((bid, ci) => OCR_SLOTS.push({ bid, ri, ci })));
-  let pending = null, tessWorker = null;
+  let pending = null, paddle = null;
 
   function pixelType(d, i) {
     const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
@@ -1453,28 +1459,29 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
     }
     return best.good >= 2 ? best.rows : null;
   }
-  function showResResult(rows, ctx, scale) {
+  function showResResult(rows, ctx, scale, img) {
     const status = $("ocrStatus");
     ctx.lineWidth = Math.max(2, 3 * scale);
-    $("ocrGrid").innerHTML = "";
+    $("ocrGrid").innerHTML = ""; $("ocrGrid").className = "ocr-grid";
     let unsure = 0;
     for (const k of RES) {
-      const { rate, stock } = rows[k];
+      const { rate, stock } = rows ? rows[k] : {};
       for (const r of [rate, stock]) if (r) { ctx.strokeStyle = r.sure ? "#e6c27a" : "#ef4b3f"; const [x0, y0, x1, y1] = r.box; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0); }
       const okAll = rate && stock && rate.sure && stock.sure;
       if (!okAll) unsure++;
       const item = document.createElement("div");
       item.className = "ocr-item" + (okAll ? "" : " warnc");
       item.innerHTML = `<span class="n">${RES_NAME[k]}</span><span></span>
-        <span>庫存 <input data-res-stock="${k}" value="${stock && stock.value != null ? toWan(stock.value) : ""}"> 萬</span>
-        <span>產量 <input data-res-rate="${k}" value="${rate && rate.value != null ? toWan(rate.value) : ""}"> 萬/時</span>
+        <span>庫存 <input data-res-stock="${k}" value="${stock && stock.value != null ? toWan(stock.value) : ""}" data-auto="${stock && stock.value != null ? toWan(stock.value) : ""}"> 萬</span>
+        <span>產量 <input data-res-rate="${k}" value="${rate && rate.value != null ? toWan(rate.value) : ""}" data-auto="${rate && rate.value != null ? toWan(rate.value) : ""}"> 萬/時</span>
         <span class="s">比對「${stock ? stock.text + (stock.unit > 1 ? "萬" : "") : "?"}」「${rate ? rate.text : "?"}/小時」${okAll ? "" : " · 不確定"}</span>`;
       $("ocrGrid").appendChild(item);
     }
-    pending = { mode: "res", labels: [] };
-    renderEngine();
+    pending = { mode: "res", img, rows, unsure, restored: restoringShot, lowRes: img.height < LOWRES_HEIGHT, reason: rows ? "" : "找不到資源詳情的版面（截圖解析度可能太低）" };
     $("ocrApply").disabled = false;
-    status.textContent = unsure ? `資源詳情：${unsure} 項不確定（紅框），請確認後套用。` : "資源詳情：辨識完成，確認後套用。";
+    status.textContent = !rows ? "找不到資源詳情的版面，可下載辨識引擎再試，或手動輸入。"
+      : unsure ? `資源詳情：${unsure} 項不確定（紅框），請確認後套用。` : "資源詳情：辨識完成，確認後套用。";
+    startEngine(pending);
   }
 
   // 回傳 { lev, text, sure }；字首可能混入名稱殘片，依序捨棄最左側字元重試
@@ -1495,67 +1502,81 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
     return fallback || { lev: null, text: "", sure: false };
   }
 
-  // ---- 辨識引擎（備援）：樣板比對不確定時，使用者同意後才非同步下載（約 4 MB，之後由瀏覽器快取）----
-  const CONSENT_KEY = "build_sim_ocr_consent";
-  const ENGINE_SIZE = "約 4 MB";
+  // ---- 辨識引擎（備援）：PaddleOCR.js（PP-OCRv6 tiny）。樣板比對不確定或截圖解析度太低時，
+  //      使用者同意後才非同步下載（約 13 MB，之後由瀏覽器快取）。低解析度截圖先放大再辨識，偵測率明顯較高 ----
+  const CONSENT_KEY = "build_sim_ocr_consent_v2";
+  const ENGINE_SIZE = "約 13 MB";
+  const PADDLE_URL = "https://esm.sh/@paddleocr/paddleocr-js@0.4.2?deps=onnxruntime-web@1.31.1,@techstark/opencv-js@4.12.0-release.1";
+  const PADDLE_MODELS = { det: "PP-OCRv6_tiny_det", rec: "PP-OCRv6_tiny_rec" };
+  const OCR_HEIGHT = 1040;      // 辨識前放大到此高度（與樣板的基準解析度相同）
+  const LOWRES_HEIGHT = 1000;   // 低於此高度時樣板比對容易出錯，建議改用辨識引擎
   const engine = { state: "idle", progress: 0, error: "", promise: null };   // idle | manual | loading | ready | error
-  const ENGINE_STEP = {
-    "loading tesseract core": "下載辨識核心", "initializing tesseract": "初始化",
-    "loading language traineddata": "下載數字模型", "initializing api": "初始化",
-  };
+  const needCount = job => !job ? 0 : job.mode === "res" ? job.unsure : job.labels.filter(L => L.needOcr).length;
+  const wantEngine = job => !!job && !job.done && (needCount(job) > 0 || job.lowRes);
   // 只有在樣板比對有不確定的項目時才顯示引擎提示列
   function renderEngine() {
     const bar = $("engineBar");
-    const unsure = pending ? pending.labels.filter(L => L.needOcr).length : 0;
-    bar.hidden = !unsure && engine.state !== "loading";
+    const unsure = needCount(pending);
+    bar.hidden = !wantEngine(pending) && engine.state !== "loading";
     bar.className = "engine " + engine.state;
     if (engine.state === "idle" || engine.state === "manual") {
-      bar.innerHTML = `<span class="msg">${unsure} 項無法確定（紅框）。可手動修正，或下載備援的文字辨識引擎（${ENGINE_SIZE}，只下載一次，之後由瀏覽器快取）再試。</span>
+      const why = pending && pending.reason ? pending.reason + "。"
+        : unsure ? `${unsure} 項無法確定（紅框）。` : pending ? `截圖解析度較低（${pending.img.width}×${pending.img.height}），自動比對可能出錯。` : "";
+      bar.innerHTML = `<span class="msg">${why}可手動修正，或下載備援的文字辨識引擎（PaddleOCR，${ENGINE_SIZE}，只下載一次，之後由瀏覽器快取）再試。</span>
         <button class="btn gold" data-engine="load">下載辨識引擎</button>
         ${engine.state === "idle" ? '<button class="btn" data-engine="manual">手動修正</button>' : ""}`;
     } else if (engine.state === "loading") {
       bar.innerHTML = `<span class="msg">${esc(engine.step || "下載辨識引擎")}… ${Math.round(engine.progress * 100)}%（完成後自動重新辨識紅框項目）</span>
         <span class="prog"><i style="width:${engine.progress * 100}%"></i></span>`;
     } else if (engine.state === "ready") {
-      bar.innerHTML = `<span class="msg">辨識引擎已就緒。</span>`;
+      bar.innerHTML = wantEngine(pending) && !pending.running
+        ? `<span class="msg">${pending.restored ? "這是上次的截圖。" : ""}辨識引擎已就緒，可只針對紅框或低解析度的項目再辨識。</span><button class="btn gold" data-engine="run">用辨識引擎辨識</button>`
+        : `<span class="msg">辨識引擎已就緒。</span>`;
     } else {
       bar.innerHTML = `<span class="msg">辨識引擎下載失敗：${esc(engine.error)}。仍可手動輸入等級。</span>
         <button class="btn" data-engine="load">重試</button>`;
     }
   }
-  function loadScript(src) {
-    if (window.Tesseract) return Promise.resolve();
-    return new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = src; s.async = true;
-      s.onload = res; s.onerror = () => { s.remove(); rej(new Error("無法連線到 jsdelivr")); };
-      document.head.appendChild(s);
-    });
+  // 模型與網站放在同一個網域（官方模型主機不允許跨網域讀取）；自行下載以顯示進度
+  async function fetchModel(name, from, span) {
+    const res = await fetch(`build_sim_assets/ocr/${name}_onnx_infer.tar`);
+    if (!res.ok) throw new Error(`模型下載失敗（HTTP ${res.status}）`);
+    const len = +res.headers.get("content-length") || 0, reader = res.body.getReader(), chunks = [];
+    for (let got = 0; ;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      if (len) { engine.progress = from + span * got / len; renderEngine(); }
+    }
+    return URL.createObjectURL(new Blob(chunks));
   }
   function loadEngine() {
     if (engine.promise) return engine.promise;
     try { localStorage.setItem(CONSENT_KEY, "1"); } catch (e) {}
-    Object.assign(engine, { state: "loading", progress: 0, step: "", error: "" });
+    Object.assign(engine, { state: "loading", progress: 0, step: "下載辨識程式", error: "" });
     renderEngine();
     engine.promise = (async () => {
-      await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
-      const worker = await Tesseract.createWorker("eng", 1, {
-        logger: m => {
-          if (engine.state !== "loading") return;
-          engine.step = ENGINE_STEP[m.status] || m.status;
-          engine.progress = m.progress || 0;
-          renderEngine();
-        },
-      });
-      await worker.setParameters({ tessedit_char_whitelist: "0123456789/", tessedit_pageseg_mode: "7" });
-      tessWorker = worker;
+      let mod;
+      try { mod = await import(PADDLE_URL); } catch (e) { throw new Error("無法連線到 esm.sh"); }
+      engine.step = "下載文字偵測模型"; engine.progress = 0.1; renderEngine();
+      const det = await fetchModel(PADDLE_MODELS.det, 0.1, 0.2);
+      engine.step = "下載文字辨識模型"; renderEngine();
+      const rec = await fetchModel(PADDLE_MODELS.rec, 0.3, 0.6);
+      engine.step = "初始化"; engine.progress = 0.9; renderEngine();
+      try {
+        paddle = await mod.PaddleOCR.create({
+          textDetectionModelName: PADDLE_MODELS.det, textDetectionModelAsset: { url: det },
+          textRecognitionModelName: PADDLE_MODELS.rec, textRecognitionModelAsset: { url: rec },
+          ortOptions: { backend: "wasm" },
+        });
+      } finally { URL.revokeObjectURL(det); URL.revokeObjectURL(rec); }
       engine.state = "ready"; renderEngine();
-      if (pending) recognizeAll(pending);
-      return worker;
+      if (wantEngine(pending)) recognizeAll(pending);
+      return paddle;
     })().catch(e => {
       Object.assign(engine, { state: "error", error: e.message || String(e), promise: null });
       renderEngine();
-      if (pending) $("ocrStatus").textContent = "請手動輸入各建築等級。";
+      if (pending) $("ocrStatus").textContent = "請手動輸入辨識結果。";
       throw e;
     });
     return engine.promise;
@@ -1606,7 +1627,7 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
     } catch (e) { return null; }
   }
   const parkMainInput = () => $("ocrMainWrap").append($("ocrMain"));   // 君主殿輸入框平時收在頁尾（隱藏）
-  let ocrRunId = 0;
+  let ocrRunId = 0, restoringShot = false;
   async function runOcr(file, restoredAt) {
     const runId = ++ocrRunId;
     const status = $("ocrStatus");
@@ -1616,6 +1637,7 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
     status.textContent = "讀取圖片…";
     const img = await createImageBitmap(file);
     if (runId !== ocrRunId) return;                     // 期間又貼上了新截圖
+    restoringShot = !!restoredAt;
     const restoredNote = restoredAt ? `上次的截圖（${new Date(restoredAt).toLocaleString()}）：` : "";
     const cv = $("ocrCanvas"); cv.width = img.width; cv.height = img.height; cv.style.display = "block";
     const ctx = cv.getContext("2d", { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
@@ -1624,26 +1646,33 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
       const resRows = readResScreen(full);
       if (resRows) {
         if (ocrMode === "auto") setOcrMode("res");
-        showResResult(resRows, ctx, img.height / 1040);
+        showResResult(resRows, ctx, img.height / 1040, img);
         if (restoredAt) status.textContent = restoredNote + status.textContent; else saveShot("res", file);
         return;
       }
-      if (ocrMode === "res") { status.textContent = "找不到資源詳情的版面，請確認截圖是「資源詳情」畫面。"; return; }
+      if (ocrMode === "res") {   // 解析度太低時樣板定位不到版面，改由辨識引擎讀整張圖
+        showResResult(null, ctx, img.height / 1040, img);
+        if (!restoredAt) saveShot("res", file);
+        return;
+      }
       setOcrMode("build");
     }
     status.textContent = "定位建築標籤…";
     await new Promise(r => setTimeout(r, 20));
     const grid = locateGrid(img);
+    let labels, reason = "";
     if (grid.score < 0.25) {
-      status.textContent = readResScreen(full)
-        ? "這張是「資源詳情」畫面，請改用「辨識資源」。"
-        : "找不到建造總覽的版面：請點選「建造總覽」並拖動到最底部後再截圖。";
-      return;
+      if (readResScreen(full)) { status.textContent = "這張是「資源詳情」畫面，請改用「辨識資源」。"; return; }
+      // 定位不到建築標籤（多半是解析度太低）：列出空白欄位，交給辨識引擎讀整張圖
+      labels = OCR_SLOTS.map(s => ({ slot: s, ok: false }));
+      reason = "找不到建築標籤（截圖解析度可能太低，或不是拖動到最底部的建造總覽）";
+    } else {
+      const S = masks(full.width, full.height, full.data);
+      labels = OCR_SLOTS.map(s => Object.assign({ slot: s }, extractLabel(full, S, grid, s)));
     }
-    const S = masks(full.width, full.height, full.data);
-    const labels = OCR_SLOTS.map(s => Object.assign({ slot: s }, extractLabel(full, S, grid, s)));
     ctx.lineWidth = Math.max(2, 3 * grid.scale);
     for (const L of labels) {
+      if (!L.box) continue;
       ctx.strokeStyle = L.ok ? "#e6c27a" : "#ef4b3f";
       const [x0, y0, x1, y1] = L.box; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
     }
@@ -1669,7 +1698,7 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
       const item = document.createElement("div"); item.className = "ocr-item";
       item.style.gridColumn = L.slot.ci + 1;
       item.innerHTML = `<div class="pill"><span class="n">${esc(b.name)}</span><span class="lv"><input type="number" min="0" max="${b.maxLev}" data-ocr="${L.slot.bid}"> / ${b.maxLev}</span></div>
-        <span class="s">${L.ok ? (L.red ? "紅字" : "") : "找不到標籤"}</span>`;
+        <span class="s">${L.ok ? (L.red ? "紅字" : "") : reason ? "" : "找不到標籤"}</span>`;
       if (L.ok) {
         // 紅字一定是等級的第一位數，優先從紅字開始
         L.tryStarts = L.redStart != null ? [L.redStart] : L.starts;
@@ -1686,46 +1715,147 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
       rowEls[L.slot.ri].appendChild(item);
     }
     $("ocrApply").disabled = false;
-    pending = { full, labels };
+    pending = { mode: "build", full, img, labels, reason, lowRes: img.height < LOWRES_HEIGHT, restored: !!restoredAt };
     updateHint();
-    const unsure = labels.filter(L => L.needOcr).length;
+    const unsure = needCount(pending);
+    status.textContent = restoredNote + (reason ? "找不到建築標籤，可下載辨識引擎再試，或手動輸入。"
+      : unsure ? `${unsure} 項需手動確認（紅框）。` : "完成，請確認君主殿等級後套用。");
+    startEngine(pending);
+  }
+  // 有不確定的項目或解析度太低時：引擎已就緒就直接辨識，曾同意下載則自動下載
+  // 帶出上次的截圖只是方便對照，不自動執行引擎（避免每次打開視窗都在手機上重跑），改由提示列的按鈕手動執行
+  function startEngine(job) {
     renderEngine();
-    if (!unsure) status.textContent = restoredNote + "完成，請確認君主殿等級後套用。";
-    else if (engine.state === "ready") recognizeAll(pending);
-    else if (engine.state === "loading") status.textContent = restoredNote + `${unsure} 項不確定，等待辨識引擎下載完成…`;
+    if (!wantEngine(job) || job.restored) return;
+    if (engine.state === "ready") recognizeAll(job);
+    else if (engine.state === "loading") $("ocrStatus").textContent = "等待辨識引擎下載完成…";
     else if (engine.state === "idle" && hasConsent()) loadEngine().catch(() => {});
-    else status.textContent = restoredNote + `${unsure} 項需手動確認（紅框）。`;
+  }
+  // 只辨識指定區域：各區域裁切後縮放到基準高度（1040）再一起送進引擎，不跑整張截圖；
+  // 回傳各區域的文字行（座標換回原圖）
+  async function paddleRead(img, rects) {
+    const k = Math.min(3, OCR_HEIGHT / img.height);
+    const crops = rects.map(r => {
+      const x0 = Math.max(0, Math.floor(r[0])), y0 = Math.max(0, Math.floor(r[1]));
+      const x1 = Math.min(img.width, Math.ceil(r[2])), y1 = Math.min(img.height, Math.ceil(r[3]));
+      const c = new OffscreenCanvas(Math.max(1, Math.round((x1 - x0) * k)), Math.max(1, Math.round((y1 - y0) * k))), x = c.getContext("2d");
+      x.imageSmoothingQuality = "high"; x.drawImage(img, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height);
+      return { bmp: c.transferToImageBitmap(), x0, y0, w: c.width, h: c.height };
+    });
+    const t0 = performance.now();
+    const out = await paddle.predict(crops.map(c => c.bmp));
+    console.debug(`[buildSim] 辨識引擎：${crops.length} 個區域、${crops.reduce((a, c) => a + c.w * c.h, 0)} 像素，${Math.round(performance.now() - t0)} ms`);
+    const mid = (poly, i) => poly.reduce((a, pt) => a + pt[i], 0) / poly.length / k;
+    return out.map((r, j) => r.items.map(it => ({ text: it.text.replace(/\s/g, ""), x: crops[j].x0 + mid(it.poly, 0), y: crops[j].y0 + mid(it.poly, 1) }))
+      .sort((a, b) => a.x - b.x));
+  }
+  const padBox = ([x0, y0, x1, y1], f) => { const p = (y1 - y0) * f; return [x0 - p, y0 - p, x1 + p, y1 + p]; };
+  // 模型輸出常混用簡體字，名稱比對前先轉成繁體
+  const NAME_VARIANT = { 骑: "騎", 钱: "錢", 綫: "錢", 粮: "糧", 库: "庫", 营: "營", 学: "學", 馆: "館", 场: "場", 门: "門", 军: "軍" };
+  const autoValue = inp => inp.value === "" || inp.value === inp.dataset.auto;   // 不覆蓋使用者手動改過的值
+  // 建築：找得到標籤時只辨識需要確認的牌卡；找不到版面時只辨識左半邊的建築區，以名稱配對
+  async function readBuild(job) {
+    const img = job.img, got = new Map();
+    let targets = job.labels.filter(L => L.box && (L.needOcr || job.lowRes));
+    if (targets.length) {
+      const res = await paddleRead(img, targets.map(L => padBox(L.box, 0.6)));
+      targets.forEach((L, j) => {
+        const raw = res[j].map(it => it.text).join(""), m = raw.match(/(\d{1,2})\/(\d{1,2})/);
+        if (m && +m[1] <= builds[L.slot.bid].maxLev) got.set(L, { lev: +m[1], raw });
+      });
+    } else {
+      targets = job.labels;
+      const [items] = await paddleRead(img, [[0, img.height * 0.08, img.width * 0.55, img.height]]);
+      // 「名稱 等級/上限」：名稱字元重疊最多者優先，每行文字只配一棟
+      const cand = [];
+      items.forEach((it, idx) => {
+        const m = it.text.match(/(\d{1,2})\/(\d{1,2})/);
+        if (!m) return;
+        const head = [...it.text.slice(0, m.index)].map(ch => NAME_VARIANT[ch] || ch).join("");
+        for (const L of job.labels) {
+          const b = builds[L.slot.bid];
+          if (+m[1] > b.maxLev) continue;
+          const sc = [...b.name].filter(ch => head.includes(ch)).length;
+          if (sc) cand.push({ idx, L, sc, lev: +m[1], raw: it.text });
+        }
+      });
+      cand.sort((a, b) => b.sc - a.sc);
+      const used = new Set();
+      for (const c of cand) if (!got.has(c.L) && !used.has(c.idx)) { got.set(c.L, c); used.add(c.idx); }
+    }
+    let miss = 0;
+    for (const L of targets) {
+      const c = got.get(L), inp = L.item.querySelector("input");
+      if (c && autoValue(inp)) { inp.value = c.lev; inp.dataset.auto = c.lev; }
+      L.needOcr = !c && inp.value === "";
+      L.item.classList.toggle("warnc", !c);
+      L.item.querySelector(".s").textContent = c ? `辨識「${c.raw}」${L.red ? " · 紅字" : ""}` : "辨識引擎也找不到";
+      if (!c) miss++;
+    }
+    updateHint();
+    return miss;
+  }
+  // 資源：找得到版面時只辨識不確定的數字行；找不到時只辨識左側欄
+  // （由上而下為糧草、木材、石料、銅幣，取最後三組「N/小時」與「N萬/上限」）
+  const parseRate = t => {
+    const m = t.match(/^(\d+)(\/)?/);
+    if (!m) return null;
+    // 「148320/小時」的斜線常被讀成 1 或 7：沒有斜線又直接接「小時」時去掉最後一位
+    return +(!m[2] && /^\d+[小時]/.test(t) && /[17]$/.test(m[1]) ? m[1].slice(0, -1) : m[1]);
+  };
+  const parseStock = (t, unit) => { const m = t.match(/^(\d+(?:\.\d+)?)(萬?)/); return m ? Math.round(parseFloat(m[1]) * (m[2] ? 10000 : unit || 1)) : null; };
+  async function readRes(job) {
+    const img = job.img, rows = job.rows, S = {}, R = {};
+    let keys = RES;
+    if (rows) {
+      keys = RES.filter(k => job.lowRes || !(rows[k].rate && rows[k].stock && rows[k].rate.sure && rows[k].stock.sure));
+      const rects = [], slots = [];
+      for (const k of keys) for (const kind of ["rate", "stock"]) if (rows[k][kind]) { rects.push(padBox(rows[k][kind].box, 0.6)); slots.push([k, kind]); }
+      const res = rects.length ? await paddleRead(img, rects) : [];
+      slots.forEach(([k, kind], j) => {
+        const raw = res[j].map(it => it.text).join("");
+        const v = kind === "rate" ? parseRate(raw) : parseStock(raw, rows[k].stock.unit);
+        if (v != null) (kind === "rate" ? R : S)[k] = { v, raw };
+      });
+    } else {
+      const [items] = await paddleRead(img, [[0, img.height * 0.1, img.width * 0.35, img.height]]);
+      const rates = [], stocks = [];
+      for (const it of items.slice().sort((a, b) => a.y - b.y)) {
+        if (/^\d+\/?[小時]/.test(it.text)) rates.push({ v: parseRate(it.text), raw: it.text });
+        else if (/^\d+(\.\d+)?萬?\//.test(it.text)) stocks.push({ v: parseStock(it.text), raw: it.text });
+      }
+      if (rates.length >= 3) rates.slice(-3).forEach((r, i) => { R[RES[i]] = r; });
+      if (stocks.length >= 3) stocks.slice(-3).forEach((r, i) => { S[RES[i]] = r; });
+    }
+    let miss = 0;
+    for (const k of RES) {
+      const st = $("ocrGrid").querySelector(`[data-res-stock="${k}"]`), rt = $("ocrGrid").querySelector(`[data-res-rate="${k}"]`);
+      const item = st.closest(".ocr-item");
+      if (!keys.includes(k)) { if (item.classList.contains("warnc")) miss++; continue; }
+      for (const [inp, r] of [[st, S[k]], [rt, R[k]]]) if (r && autoValue(inp)) { inp.value = toWan(r.v); inp.dataset.auto = inp.value; }
+      const ok = !!(S[k] && R[k]);
+      item.classList.toggle("warnc", !ok);
+      item.querySelector(".s").textContent = `辨識「${S[k] ? S[k].raw : "?"}」「${R[k] ? R[k].raw : "?"}」${ok ? "" : " · 不確定"}`;
+      if (!ok) miss++;
+    }
+    job.unsure = miss;
+    return miss;
   }
   async function recognizeAll(job) {
     if (job.running || job.done) return;
     job.running = true;
+    renderEngine();
     const status = $("ocrStatus");
-    let miss = 0;
-    for (const [i, L] of job.labels.entries()) {
-      if (pending !== job) return;   // 已換成新截圖
-      if (!L.needOcr) continue;
-      if (!L.ok) { miss++; continue; }
-      const b = builds[L.slot.bid], inp = L.item.querySelector("input");
-      status.textContent = `辨識中 ${i + 1}/${job.labels.length}…`;
-      let lev = null, conf = 0, raw = "", crop = L.crop;
-      for (const nx0 of L.tryStarts) {
-        const c = numberCanvas(job.full, Object.assign({}, L, { nx0 }));
-        const r = await tessWorker.recognize(c);
-        const v = parseLevel(r.data.text.trim(), b.maxLev);
-        if (raw === "" || v != null) { raw = r.data.text.trim(); conf = Math.round(r.data.confidence); crop = c; }
-        if (v != null) { lev = v; break; }
-      }
-      if (crop !== L.crop) { crop.title = L.crop.title; L.crop.replaceWith(crop); L.crop = crop; }
-      // 不覆蓋使用者手動改過的值（樣板比對填入的值可被覆蓋）
-      if (lev != null && (inp.value === "" || inp.dataset.auto === inp.value)) inp.value = lev;
-      L.needOcr = lev == null || conf < 60;
-      L.item.classList.toggle("warnc", L.needOcr);
-      L.item.querySelector(".s").textContent = `辨識「${raw || "?"}」 信心 ${conf}${L.red ? " · 紅字" : ""}`;
-      if (lev == null) miss++;
-    }
-    job.done = true; job.running = false;
-    updateHint(); renderEngine();
-    status.textContent = miss ? `完成，${miss} 項需手動確認（紅框）。` : "完成，請確認君主殿等級後套用。";
+    status.textContent = "辨識引擎讀取中…";
+    await new Promise(r => setTimeout(r, 20));
+    let miss;
+    try { miss = await (job.mode === "res" ? readRes(job) : readBuild(job)); }
+    catch (e) { job.running = false; if (pending === job) status.textContent = "辨識失敗：" + (e.message || e); return; }
+    job.running = false; job.done = true; job.reason = "";
+    if (pending !== job) return;   // 已換成新截圖
+    renderEngine();
+    status.textContent = miss ? `完成，${miss} 項需手動確認（紅框）。`
+      : job.mode === "res" ? "資源詳情：辨識完成，確認後套用。" : "完成，請確認君主殿等級後套用。";
   }
   function updateHint() {
     if (!pending) return;
@@ -1816,6 +1946,7 @@ dialog h3 { margin: 0 0 6px; font: 900 22px/1 var(--serif); color: var(--gold); 
     const a = e.target.closest("[data-engine]");
     if (!a) return;
     if (a.dataset.engine === "load") loadEngine().catch(() => {});
+    else if (a.dataset.engine === "run") { if (pending) recognizeAll(pending); }
     else { engine.state = "manual"; renderEngine(); }
   });
   $("ocrGrid").addEventListener("change", updateHint);
